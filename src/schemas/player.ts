@@ -1,16 +1,27 @@
 import { z } from 'zod';
 
-const POSITIONS = ['GK', 'DF', 'MF', 'FW'] as const;
+const POSITIONS = [
+  'GK',
+  'CB', 'LB', 'RB', 'WB',
+  'CDM', 'CM', 'LM', 'RM', 'CAM', 'AM',
+  'LW', 'RW', 'ST', 'CF',
+] as const;
+const PREFERRED_FOOT = ['LEFT', 'RIGHT', 'BOTH'] as const;
+
+const optionalInt = (min: number, max: number) =>
+  z.preprocess(
+    (v) => (v === '' || v === undefined || v === null || isNaN(Number(v)) ? undefined : Number(v)),
+    z.number().int().min(min).max(max).optional()
+  );
 
 export const registerPlayerSchema = z.object({
-  name: z.string().min(2, '이름은 2자 이상이어야 합니다'),
-  number: z
-    .number()
-    .int()
-    .min(1, '1 이상의 숫자를 입력하세요')
-    .max(99, '99 이하의 숫자를 입력하세요'),
-  mainPosition: z.enum(POSITIONS),
-  subPositions: z.array(z.enum(POSITIONS)),
+  birthDate: z.string().optional(),
+  height: optionalInt(100, 250),
+  weight: optionalInt(30, 200),
+  preferredFoot: z.enum(PREFERRED_FOOT).optional(),
+  career: z.string().optional(),
+  preferredPosition: z.enum(POSITIONS).optional(),
+  subPosition: z.enum(POSITIONS).optional(),
 });
 
 export type RegisterPlayerFormData = z.infer<typeof registerPlayerSchema>;

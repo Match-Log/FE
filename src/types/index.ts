@@ -14,12 +14,24 @@ export interface Team {
   playerId?: number;
 }
 
+export type Position =
+  | 'GK'
+  | 'CB' | 'LB' | 'RB' | 'WB'
+  | 'CDM' | 'CM' | 'LM' | 'RM' | 'CAM' | 'AM'
+  | 'LW' | 'RW' | 'ST' | 'CF';
+
+export type PreferredFoot = 'LEFT' | 'RIGHT' | 'BOTH';
+
 export interface Player {
   playerId: number;
   name: string;
-  number: number;
-  mainPosition: 'GK' | 'DF' | 'MF' | 'FW';
-  subPositions: ('GK' | 'DF' | 'MF' | 'FW')[];
+  birthDate?: string;
+  height?: number;
+  weight?: number;
+  preferredFoot?: PreferredFoot;
+  career?: string;
+  preferredPosition?: Position;
+  subPosition?: Position;
 }
 
 export interface Match {

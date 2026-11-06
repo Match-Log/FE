@@ -1,7 +1,10 @@
 import { apiClient } from './client';
-import type { TeamPlayer, KickerRole } from '@/types';
+import type { TeamPlayer, KickerRole, Position } from '@/types';
 
 export const participationApi = {
+  joinTeam: (teamId: number, data: { number: number; mainPosition: Position; subPosition?: Position }) =>
+    apiClient.post(`/api/v1/teams/${teamId}/participations`, data),
+
   getTeamPlayers: (teamId: number) =>
     apiClient.get<TeamPlayer[]>(`/api/v1/teams/${teamId}/players`),
 
