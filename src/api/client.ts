@@ -9,14 +9,19 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  console.log(`[API REQ] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.data);
   const token = localStorage.getItem('accessToken');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 apiClient.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    console.log(`[API RES] ${res.status} ${res.config.url}`, res.data);
+    return res;
+  },
   async (error) => {
+    console.error(`[API ERR] ${error.response?.status} ${error.config?.url}`, error.response?.data, error.message);
     const orig = error.config;
     if (error.response?.status === 401 && !orig._retry) {
       orig._retry = true;

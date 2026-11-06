@@ -25,9 +25,11 @@ export default function LoginPage() {
   } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) });
 
   const onSubmit = async (data: LoginFormData) => {
+    console.log('[Login] 시도:', data.email);
     setIsLoading(true);
     try {
       const res = await authApi.login(data);
+      console.log('[Login] 성공:', res.data);
       const { accessToken, refreshToken, name } = res.data;
 
       localStorage.setItem('accessToken', accessToken);
@@ -38,6 +40,7 @@ export default function LoginPage() {
       login(accessToken);
       router.push('/team/select');
     } catch (err: unknown) {
+      console.error('[Login] 실패:', err);
       const message =
         err && typeof err === 'object' && 'response' in err
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
