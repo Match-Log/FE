@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# internal docs (FE↔BE 정합성 작업 문서)
+/nomistake
+/nomistake-resolved.md
