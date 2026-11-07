@@ -5,7 +5,7 @@ export const boardApi = {
   getPosts: (teamId: number) =>
     apiClient.get<BoardPost[]>(`/api/v1/boards?teamId=${teamId}`),
 
-  createPost: (data: { title: string; content: string; teamId: number }) =>
+  createPost: (data: { title: string; content: string; teamId: number; matchId?: number }) =>
     apiClient.post<BoardPost>('/api/v1/boards', data),
 
   getPost: (boardId: number) =>

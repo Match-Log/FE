@@ -58,7 +58,7 @@ export default function TeamSelectPage() {
   }, []);
 
   const handleSelectTeam = (team: Team) => {
-    setTeam(team.teamId, team.playerId ?? 0, team.role, team.name);
+    setTeam(team.teamId, playerId ?? 0, team.role, team.name);
     router.push('/home');
   };
 
@@ -80,7 +80,7 @@ export default function TeamSelectPage() {
     try {
       const res = await teamApi.joinTeam(data);
       const team = res.data;
-      setTeam(team.teamId, team.playerId ?? 0, team.role);
+      setTeam(team.teamId, team.playerId ?? playerId ?? 0, team.role as 'MANAGER' | 'PLAYER');
       toast.success('팀에 합류했습니다!');
       setJoinDialogOpen(false);
       resetJoin();
@@ -234,7 +234,7 @@ export default function TeamSelectPage() {
                             {team.name}
                           </h3>
                           <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">
-                            {team.matchType === 'SOCCER' ? '리그팀' : '풋살팀'} · {team.region}
+                            {team.region ?? ''}
                           </p>
                         </div>
                       </div>

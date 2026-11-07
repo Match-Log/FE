@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 const POSITIONS = [
-  'GK',
   'CB', 'LB', 'RB', 'WB',
   'CDM', 'CM', 'LM', 'RM', 'CAM', 'AM',
   'LW', 'RW', 'ST', 'CF',

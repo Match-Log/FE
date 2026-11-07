@@ -2,16 +2,24 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Crown, Target } from 'lucide-react';
 import { participationApi } from '@/api/participation';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 import { cn } from '@/lib/utils';
-import type { TeamPlayer } from '@/types';
+import type { RosterItem } from '@/types';
 
-type PositionFilter = 'ALL' | 'GK' | 'DF' | 'MF' | 'FW';
-const POSITION_FILTERS: PositionFilter[] = ['ALL', 'GK', 'DF', 'MF', 'FW'];
-const POSITION_LABELS: Record<string, string> = { GK: 'Goalkeeper', DF: 'Defender', MF: 'Midfielder', FW: 'Forward' };
+type PositionCategory = 'DF' | 'MF' | 'FW';
+type PositionFilter = 'ALL' | PositionCategory;
+const POSITION_FILTERS: PositionFilter[] = ['ALL', 'DF', 'MF', 'FW'];
+const POSITION_LABELS: Record<string, string> = { DF: 'Defender', MF: 'Midfielder', FW: 'Forward' };
+
+function positionToCategory(pos?: string): PositionCategory | null {
+  if (!pos) return null;
+  if (['CB', 'LB', 'RB', 'WB'].includes(pos)) return 'DF';
+  if (['CDM', 'CM', 'LM', 'RM', 'CAM', 'AM'].includes(pos)) return 'MF';
+  if (['LW', 'RW', 'ST', 'CF'].includes(pos)) return 'FW';
+  return null;
+}
 
 function getInitials(name: string) {
   return name.slice(0, 2);
@@ -19,7 +27,7 @@ function getInitials(name: string) {
 
 export default function SquadPage() {
   const { teamId, teamName } = useTeamStore();
-  const [players, setPlayers] = useState<TeamPlayer[]>([]);
+  const [players, setPlayers] = useState<RosterItem[]>([]);
   const [filter, setFilter] = useState<PositionFilter>('ALL');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -31,23 +39,21 @@ export default function SquadPage() {
       .finally(() => setIsLoading(false));
   }, [teamId]);
 
-  const captain = players.find((p) => p.kickerRole === 'CAPTAIN');
-  const pkKicker = players.find((p) => p.kickerRole === 'PENALTY');
-
-  const filtered = filter === 'ALL' ? players : players.filter((p) => p.mainPosition === filter);
+  const filtered = filter === 'ALL'
+    ? players
+    : players.filter((p) => positionToCategory(p.mainPosition) === filter);
 
   const counts = {
-    GK: players.filter((p) => p.mainPosition === 'GK').length,
-    DF: players.filter((p) => p.mainPosition === 'DF').length,
-    MF: players.filter((p) => p.mainPosition === 'MF').length,
-    FW: players.filter((p) => p.mainPosition === 'FW').length,
+    DF: players.filter((p) => positionToCategory(p.mainPosition) === 'DF').length,
+    MF: players.filter((p) => positionToCategory(p.mainPosition) === 'MF').length,
+    FW: players.filter((p) => positionToCategory(p.mainPosition) === 'FW').length,
   };
 
-  const grouped = (['GK', 'DF', 'MF', 'FW'] as const).reduce((acc, pos) => {
-    const group = filtered.filter((p) => p.mainPosition === pos);
-    if (group.length > 0) acc[pos] = group;
+  const grouped = (['DF', 'MF', 'FW'] as const).reduce((acc, cat) => {
+    const group = filtered.filter((p) => positionToCategory(p.mainPosition) === cat);
+    if (group.length > 0) acc[cat] = group;
     return acc;
-  }, {} as Record<string, TeamPlayer[]>);
+  }, {} as Record<string, RosterItem[]>);
 
   return (
     <div className="min-h-screen bg-[#05060B] text-white">
@@ -78,7 +84,7 @@ export default function SquadPage() {
               <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Total</p>
             </div>
             <div className="w-px h-8 bg-white/10" />
-            {(['GK', 'DF', 'MF', 'FW'] as const).map((pos) => (
+            {(['DF', 'MF', 'FW'] as const).map((pos) => (
               <div key={pos} className="text-center">
                 <p className="text-xl font-black italic text-zinc-200 mb-0.5">{counts[pos]}</p>
                 <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">{pos}</p>
@@ -86,45 +92,6 @@ export default function SquadPage() {
             ))}
           </div>
         </section>
-
-        {/* Specialists */}
-        {(captain || pkKicker) && (
-          <section className="space-y-4 relative z-10">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#00F5FF]">Specialists</h2>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-              {captain && (
-                <div
-                  className="shrink-0 px-5 py-4 rounded-2xl border border-white/10 flex items-center gap-4 cursor-pointer hover:border-[#00F5FF]/30 transition-all"
-                  style={{ background: 'rgba(18, 20, 32, 0.4)', backdropFilter: 'blur(20px)' }}
-                >
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                    <Crown className="w-4 h-4 text-amber-500" />
-                  </div>
-                  <div className="pr-2">
-                    <p className="text-[8px] font-black text-zinc-600 uppercase tracking-tighter mb-0.5">Captain</p>
-                    <p className="text-sm font-black uppercase">{captain.name}</p>
-                  </div>
-                </div>
-              )}
-              {pkKicker && (
-                <div
-                  className="shrink-0 px-5 py-4 rounded-2xl border border-white/10 flex items-center gap-4 cursor-pointer hover:border-[#00F5FF]/30 transition-all"
-                  style={{ background: 'rgba(18, 20, 32, 0.4)', backdropFilter: 'blur(20px)' }}
-                >
-                  <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
-                    <Target className="w-4 h-4 text-rose-500" />
-                  </div>
-                  <div className="pr-2">
-                    <p className="text-[8px] font-black text-zinc-600 uppercase tracking-tighter mb-0.5">Penalty</p>
-                    <p className="text-sm font-black uppercase">{pkKicker.name}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
 
         {/* Position filter */}
         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar relative z-10">

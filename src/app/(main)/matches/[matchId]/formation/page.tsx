@@ -9,7 +9,7 @@ import { participationApi } from '@/api/participation';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 import { cn } from '@/lib/utils';
-import type { TeamPlayer, KickerRole } from '@/types';
+import type { RosterItem, KickerRole, KickerAssignment } from '@/types';
 
 // ── Formation definitions ──────────────────────────────────────────────────
 
@@ -98,7 +98,7 @@ export default function FormationPage() {
   const [slotAssignments, setSlotAssignments] = useState<Record<string, number>>({});
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
 
-  const [players, setPlayers] = useState<TeamPlayer[]>([]);
+  const [players, setPlayers] = useState<RosterItem[]>([]);
   const [specialists, setSpecialists] = useState<Record<KickerRole, number | null>>({
     CAPTAIN: null, PENALTY: null, LEFT_CORNER: null, RIGHT_CORNER: null, LEFT_FK: null, RIGHT_FK: null,
   });
@@ -109,12 +109,6 @@ export default function FormationPage() {
     if (!teamId) return;
     participationApi.getTeamPlayers(teamId).then((r) => {
       setPlayers(r.data);
-      // Parse specialists from kickerRole if included in response
-      const specMap = { CAPTAIN: null, PENALTY: null, LEFT_CORNER: null, RIGHT_CORNER: null, LEFT_FK: null, RIGHT_FK: null } as Record<KickerRole, number | null>;
-      r.data.forEach((p) => {
-        if (p.kickerRole) specMap[p.kickerRole] = p.playerId;
-      });
-      setSpecialists(specMap);
     }).catch(() => {});
 
     lineupApi.getLineup(matchId).then((r) => {
@@ -122,7 +116,7 @@ export default function FormationPage() {
       if (lineup) {
         setFormation(lineup.formation as FormationName);
         const map: Record<string, number> = {};
-        lineup.spots.forEach((s) => { map[s.position] = s.playerId; });
+        lineup.spots.forEach((s) => { if (s.playerId != null) map[s.position] = s.playerId; });
         setSlotAssignments(map);
       }
     }).catch(() => {});
@@ -135,7 +129,7 @@ export default function FormationPage() {
       if (lineup) {
         setFormation(lineup.formation as FormationName);
         const map: Record<string, number> = {};
-        lineup.spots.forEach((s) => { map[s.position] = s.playerId; });
+        lineup.spots.forEach((s) => { if (s.playerId != null) map[s.position] = s.playerId; });
         setSlotAssignments(map);
       } else {
         setSlotAssignments({});
@@ -170,21 +164,27 @@ export default function FormationPage() {
     setSelectedPlayerId((prev) => (prev === playerId ? null : playerId));
   };
 
+  const posToCategory = (pos?: string): 'DF' | 'MF' | 'FW' => {
+    if (!pos) return 'FW';
+    if (['CB', 'LB', 'RB', 'WB'].includes(pos)) return 'DF';
+    if (['CDM', 'CM', 'LM', 'RM', 'CAM', 'AM'].includes(pos)) return 'MF';
+    return 'FW';
+  };
+
   const autoFormation = useCallback(() => {
     if (!isManager) return;
     const newMap: Record<string, number> = {};
-    const byPos: Record<string, TeamPlayer[]> = { GK: [], DF: [], MF: [], FW: [] };
-    players.forEach((p) => byPos[p.mainPosition]?.push(p));
+    const byPos: Record<string, RosterItem[]> = { DF: [], MF: [], FW: [] };
+    players.forEach((p) => byPos[posToCategory(p.mainPosition)]?.push(p));
 
     const slotList = FORMATIONS[formation];
-    const gkSlots = slotList.filter((s) => s.label === 'GK');
     const defSlots = slotList.filter((s) => ['LB', 'CB', 'RB', 'LCB', 'RCB', 'LWB', 'RWB'].includes(s.label));
-    const midSlots = slotList.filter((s) => ['LM', 'CM', 'RM', 'CDM', 'CAM', 'CM1', 'CM2', 'CM3'].includes(s.label));
+    const midSlots = slotList.filter((s) => ['LM', 'CM', 'RM', 'CDM', 'CAM', 'CM1', 'CM2', 'CM3', 'CDM1', 'CDM2'].includes(s.label));
     const fwdSlots = slotList.filter((s) => ['ST', 'LW', 'RW', 'ST1', 'ST2'].includes(s.label));
 
-    [[gkSlots, byPos.GK], [defSlots, byPos.DF], [midSlots, byPos.MF], [fwdSlots, byPos.FW]].forEach(([ss, pp]) => {
+    [[defSlots, byPos.DF], [midSlots, byPos.MF], [fwdSlots, byPos.FW]].forEach(([ss, pp]) => {
       const slotsArr = ss as SlotDef[];
-      const pArr = pp as TeamPlayer[];
+      const pArr = pp as RosterItem[];
       slotsArr.forEach((slot, i) => {
         if (pArr[i]) newMap[slot.id] = pArr[i].playerId;
       });
@@ -199,7 +199,7 @@ export default function FormationPage() {
     try {
       const spots = Object.entries(slotAssignments).map(([slotId, playerId]) => {
         const slotDef = slots.find((s) => s.id === slotId)!;
-        return { playerId, position: slotDef.label, x: slotDef.x, y: slotDef.y };
+        return { playerId, position: slotDef.label, isStarter: true };
       });
       await lineupApi.saveLineup(matchId, { quarter, formation, spots });
       toast.success('라인업이 저장되었습니다');
@@ -210,6 +210,17 @@ export default function FormationPage() {
     }
   };
 
+  const roleToAssignment = (role: KickerRole): KickerAssignment => {
+    switch (role) {
+      case 'CAPTAIN':      return { isCaptain: true };
+      case 'PENALTY':      return { isPkTaker: true };
+      case 'LEFT_CORNER':  return { isCkLeft: true };
+      case 'RIGHT_CORNER': return { isCkRight: true };
+      case 'LEFT_FK':      return { isFkLeft: true };
+      case 'RIGHT_FK':     return { isFkRight: true };
+    }
+  };
+
   const saveSpecialists = async () => {
     if (!isManager || !teamId) return;
     setIsSaving(true);
@@ -217,7 +228,7 @@ export default function FormationPage() {
       await Promise.all(
         (Object.entries(specialists) as [KickerRole, number | null][])
           .filter(([, pid]) => pid !== null)
-          .map(([role, pid]) => participationApi.setKicker(teamId, pid!, { role }))
+          .map(([role, pid]) => participationApi.setKicker(teamId, pid!, roleToAssignment(role)))
       );
       toast.success('스페셜리스트가 저장되었습니다');
     } catch {

@@ -61,7 +61,7 @@ export default function MatchLayout({ children }: { children: React.ReactNode })
                 <p className="text-xs font-black uppercase tracking-widest">
                   {teamName ?? 'My Team'}{' '}
                   <span className="text-zinc-600 font-bold">VS</span>{' '}
-                  {match.opponentTeam}
+                  {match.opponent}
                 </p>
                 <p className="text-[9px] font-bold text-zinc-600 mt-0.5 uppercase tracking-widest">
                   {new Intl.DateTimeFormat('ko-KR', {

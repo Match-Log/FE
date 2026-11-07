@@ -9,7 +9,7 @@ import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
-import type { Match, Vote } from '@/types';
+import type { MatchListItem, VoteItem } from '@/types';
 import { cn } from '@/lib/utils';
 
 function getDaysUntil(dateStr: string): number {
@@ -34,19 +34,21 @@ function formatRecentDate(dateStr: string): string {
   return new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric' }).format(date);
 }
 
-function getMatchResult(match: Match) {
-  if (match.myScore == null || match.opponentScore == null) return null;
-  if (match.myScore > match.opponentScore) return { label: '승', color: 'text-[#00F5FF]' };
-  if (match.myScore < match.opponentScore) return { label: '패', color: 'text-purple-500' };
-  return { label: '무', color: 'text-zinc-500' };
+function getMatchResult(match: MatchListItem) {
+  const myScore = match.homeAway === 'HOME' ? match.scoreHome : match.scoreAway;
+  const opponentScore = match.homeAway === 'HOME' ? match.scoreAway : match.scoreHome;
+  if (myScore == null || opponentScore == null) return null;
+  if (myScore > opponentScore) return { label: '승', color: 'text-[#00F5FF]', myScore, opponentScore };
+  if (myScore < opponentScore) return { label: '패', color: 'text-purple-500', myScore, opponentScore };
+  return { label: '무', color: 'text-zinc-500', myScore, opponentScore };
 }
 
 export default function HomePage() {
   const router = useRouter();
   const { teamId, teamName, playerId, role } = useTeamStore();
-  const [upcomingMatch, setUpcomingMatch] = useState<Match | null>(null);
-  const [votes, setVotes] = useState<Vote[]>([]);
-  const [recentMatches, setRecentMatches] = useState<Match[]>([]);
+  const [upcomingMatch, setUpcomingMatch] = useState<MatchListItem | null>(null);
+  const [votes, setVotes] = useState<VoteItem[]>([]);
+  const [recentMatches, setRecentMatches] = useState<MatchListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
 
@@ -57,16 +59,20 @@ export default function HomePage() {
     if (!teamId) return;
     setIsLoading(true);
     try {
-      const [scheduledRes, completedRes] = await Promise.all([
-        matchApi.getMatches(teamId, 'SCHEDULED'),
-        matchApi.getMatches(teamId, 'COMPLETED'),
-      ]);
-      const upcoming = scheduledRes.data[0] ?? null;
+      const matchesRes = await matchApi.getMatches(teamId);
+      const all = matchesRes.data;
+      const scheduled = all
+        .filter((m) => !m.isFinished)
+        .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
+      const completed = all
+        .filter((m) => m.isFinished)
+        .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime());
+      const upcoming = scheduled[0] ?? null;
       setUpcomingMatch(upcoming);
-      setRecentMatches(completedRes.data.slice(0, 3));
+      setRecentMatches(completed.slice(0, 3));
       if (upcoming) {
         const votesRes = await voteApi.getVotes(upcoming.matchId);
-        setVotes(votesRes.data);
+        setVotes(votesRes.data.votes);
       }
     } catch {
       // silent fail: show empty states
@@ -94,7 +100,7 @@ export default function HomePage() {
     try {
       await voteApi.vote(upcomingMatch.matchId, { status });
       const votesRes = await voteApi.getVotes(upcomingMatch.matchId);
-      setVotes(votesRes.data);
+      setVotes(votesRes.data.votes);
     } catch {
       toast.error('투표에 실패했습니다');
     } finally {
@@ -176,16 +182,11 @@ export default function HomePage() {
                     {formatUpcomingDate(upcomingMatch.matchDate)}
                   </span>
                 </div>
-                {upcomingMatch.leagueInfo && (
-                  <div className="bg-zinc-900/50 border border-white/5 px-2 py-0.5 rounded text-[8px] font-black text-zinc-500 uppercase tracking-widest">
-                    {upcomingMatch.leagueInfo}
-                  </div>
-                )}
               </div>
 
               <Link href={`/matches/${upcomingMatch.matchId}`}>
                 <h2 className="text-4xl font-black italic tracking-tighter uppercase mb-2 hover:text-[#00F5FF] transition-colors">
-                  VS {upcomingMatch.opponentTeam}
+                  VS {upcomingMatch.opponent}
                 </h2>
               </Link>
               <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-10 italic">
@@ -278,29 +279,27 @@ export default function HomePage() {
                     <div className="flex items-center justify-between hover:opacity-80 transition-opacity">
                       <div>
                         <h4 className="text-base font-black uppercase tracking-tight">
-                          vs {match.opponentTeam}
+                          vs {match.opponent}
                         </h4>
                         <p className="text-[10px] font-bold text-zinc-600 mt-1 uppercase tracking-widest italic">
                           {formatRecentDate(match.matchDate)}{' '}
-                          {match.leagueInfo ?? (match.matchType === 'SOCCER' ? '축구' : '풋살')}
+                          {match.matchType === 'SOCCER' ? '축구' : '풋살'}
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        {match.myScore != null && match.opponentScore != null ? (
+                        {result ? (
                           <>
                             <span
                               className={cn(
                                 'text-xl font-black italic',
-                                result?.label === '무' ? 'text-zinc-600' : 'text-white'
+                                result.label === '무' ? 'text-zinc-600' : 'text-white'
                               )}
                             >
-                              {match.myScore} : {match.opponentScore}
+                              {result.myScore} : {result.opponentScore}
                             </span>
-                            {result && (
-                              <span className={cn('text-[10px] font-black uppercase italic', result.color)}>
-                                {result.label}
-                              </span>
-                            )}
+                            <span className={cn('text-[10px] font-black uppercase italic', result.color)}>
+                              {result.label}
+                            </span>
                           </>
                         ) : (
                           <span className="text-zinc-600 text-sm font-black">— : —</span>

@@ -58,7 +58,7 @@ export default function TeamSettingsPage() {
   const handleStartEdit = () => {
     if (!team) return;
     setEditName(team.name);
-    setEditRegion(team.region);
+    setEditRegion(team.region ?? '');
     setIsEditing(true);
   };
 
@@ -113,8 +113,6 @@ export default function TeamSettingsPage() {
     }
   };
 
-  const matchTypeLabel = (type: 'SOCCER' | 'FUTSAL') =>
-    type === 'SOCCER' ? '축구' : '풋살';
 
   if (isLoading) {
     return (
@@ -215,10 +213,6 @@ export default function TeamSettingsPage() {
                     <p className="text-[10px] font-bold text-zinc-600 mb-0.5 uppercase tracking-widest">지역</p>
                     <p className="text-sm font-black">{team.region}</p>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-zinc-600 mb-0.5 uppercase tracking-widest">종목</p>
-                    <p className="text-sm font-black">{matchTypeLabel(team.matchType)}</p>
-                  </div>
                   {team.createdAt && (
                     <div>
                       <p className="text-[10px] font-bold text-zinc-600 mb-0.5 uppercase tracking-widest">창단일</p>
@@ -286,7 +280,7 @@ export default function TeamSettingsPage() {
               </div>
               <div>
                 <p className="text-sm font-black">{team.name}</p>
-                <p className="text-[10px] font-bold text-zinc-600">{team.region} · {matchTypeLabel(team.matchType)}</p>
+                <p className="text-[10px] font-bold text-zinc-600">{team.region}</p>
               </div>
             </div>
             <Button

@@ -19,22 +19,17 @@ export default function CreateTeamPage() {
   const {
     register,
     handleSubmit,
-    watch,
-    setValue,
     formState: { errors },
   } = useForm<CreateTeamFormData>({
     resolver: zodResolver(createTeamSchema),
-    defaultValues: { matchType: 'SOCCER' },
   });
-
-  const matchType = watch('matchType');
 
   const onSubmit = async (data: CreateTeamFormData) => {
     setIsLoading(true);
     try {
       const res = await teamApi.createTeam(data);
       const team = res.data;
-      setTeam(team.teamId, team.playerId ?? 0, team.role);
+      setTeam(team.teamId, 0, 'MANAGER', team.name);
       toast.success('팀이 생성되었습니다!');
       router.push('/onboarding/register-player');
     } catch (err: unknown) {
@@ -135,29 +130,6 @@ export default function CreateTeamPage() {
             {errors.region && (
               <p className="text-xs text-red-400 ml-1">{errors.region.message}</p>
             )}
-          </div>
-
-          {/* 매치 타입 */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">
-              Match Type
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {(['SOCCER', 'FUTSAL'] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setValue('matchType', type)}
-                  className={
-                    matchType === type
-                      ? 'py-4 border-2 border-[#00F5FF] bg-[#00F5FF]/10 text-[#00F5FF] rounded-sm text-[11px] font-black uppercase tracking-widest transition-all'
-                      : 'py-4 border-2 border-zinc-800 rounded-sm text-[11px] font-black uppercase tracking-widest hover:border-zinc-600 transition-all text-zinc-400'
-                  }
-                >
-                  {type === 'SOCCER' ? '⚽ Soccer' : '🏟 Futsal'}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Submit */}

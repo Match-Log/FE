@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Pin, PenSquare, MessageSquare } from 'lucide-react';
+import { Pin, PenSquare } from 'lucide-react';
 import { boardApi } from '@/api/board';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
@@ -38,7 +38,7 @@ export default function BoardPage() {
       .finally(() => setIsLoading(false));
   }, [teamId]);
 
-  const pinned = posts.filter((p) => p.isPinned);
+  const pinned = posts.filter((p) => p.isPinned === true);
   const regular = posts.filter((p) => !p.isPinned);
 
   return (
@@ -100,15 +100,10 @@ export default function BoardPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 rounded-full bg-[#00F5FF]/20 flex items-center justify-center text-[7px] font-black text-[#00F5FF]">
-                        {getInitials(post.authorName)}
+                        {getInitials(post.playerName)}
                       </div>
-                      <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-tighter">{post.authorName}</span>
+                      <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-tighter">{post.playerName}</span>
                     </div>
-                    {(post.commentCount ?? 0) > 0 && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-zinc-600">
-                        <MessageSquare className="w-3 h-3" /> {post.commentCount}
-                      </span>
-                    )}
                   </div>
                 </div>
               </Link>
@@ -128,15 +123,10 @@ export default function BoardPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[7px] font-black text-zinc-500">
-                        {getInitials(post.authorName)}
+                        {getInitials(post.playerName)}
                       </div>
-                      <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-tighter">{post.authorName}</span>
+                      <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-tighter">{post.playerName}</span>
                     </div>
-                    {(post.commentCount ?? 0) > 0 && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-zinc-600">
-                        <MessageSquare className="w-3 h-3" /> {post.commentCount}
-                      </span>
-                    )}
                   </div>
                 </div>
               </Link>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -13,13 +13,12 @@ import GridBackground from '@/components/common/GridBackground';
 import { cn } from '@/lib/utils';
 
 const POSITION_GROUPS = [
-  { label: 'GK', positions: ['GK'] },
   { label: 'DF', positions: ['CB', 'LB', 'RB', 'WB'] },
   { label: 'MF', positions: ['CDM', 'CM', 'LM', 'RM', 'CAM', 'AM'] },
   { label: 'FW', positions: ['LW', 'RW', 'ST', 'CF'] },
 ] as const;
 
-type Position = 'GK' | 'CB' | 'LB' | 'RB' | 'WB' | 'CDM' | 'CM' | 'LM' | 'RM' | 'CAM' | 'AM' | 'LW' | 'RW' | 'ST' | 'CF';
+type Position = 'CB' | 'LB' | 'RB' | 'WB' | 'CDM' | 'CM' | 'LM' | 'RM' | 'CAM' | 'AM' | 'LW' | 'RW' | 'ST' | 'CF';
 
 const PREFERRED_FOOT = [
   { value: 'LEFT', label: '왼발' },
@@ -40,7 +39,7 @@ export default function RegisterPlayerPage() {
     setValue,
     formState: { errors },
   } = useForm<RegisterPlayerFormData>({
-    resolver: zodResolver(registerPlayerSchema),
+    resolver: zodResolver(registerPlayerSchema) as Resolver<RegisterPlayerFormData>,
   });
 
   const preferredPosition = watch('preferredPosition');

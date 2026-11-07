@@ -8,17 +8,19 @@ export const teamApi = {
   getTeam: (teamId: number) =>
     apiClient.get<TeamDetail>(`/api/v1/teams/${teamId}`),
 
-  createTeam: (data: { name: string; region: string; matchType: 'SOCCER' | 'FUTSAL' }) =>
-    apiClient.post<Team>('/api/v1/teams', data),
+  createTeam: (data: { name: string; region?: string; teamImage?: string; foundedYear?: number; homeGround?: string }) =>
+    apiClient.post<TeamDetail>('/api/v1/teams', data),
 
   joinTeam: (data: { inviteCode: string }) =>
-    apiClient.post<Team>('/api/v1/teams/join', data),
+    apiClient.post<{ participationId: number; teamId: number; teamName: string; teamImage?: string; playerId: number; role: string; joinedAt: string }>('/api/v1/teams/join', data),
 
   getInviteCode: (teamId: number) =>
     apiClient.get<{ inviteCode: string }>(`/api/v1/teams/${teamId}/invite-code`),
 
-  updateTeam: (teamId: number, data: { name?: string; region?: string }) =>
-    apiClient.patch<TeamDetail>(`/api/v1/teams/${teamId}`, data),
+  updateTeam: (
+    teamId: number,
+    data: { name?: string; region?: string; teamImage?: string; foundedYear?: number; homeGround?: string }
+  ) => apiClient.patch<TeamDetail>(`/api/v1/teams/${teamId}`, data),
 
   deleteTeam: (teamId: number) =>
     apiClient.delete(`/api/v1/teams/${teamId}`),

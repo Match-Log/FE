@@ -6,7 +6,6 @@ import { ChevronLeft, Pin, Pencil, Trash2, Send, MoreVertical } from 'lucide-rea
 import { toast } from 'sonner';
 import { boardApi } from '@/api/board';
 import { useTeamStore } from '@/stores/teamStore';
-import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -33,8 +32,7 @@ function formatDate(dateStr: string) {
 export default function BoardDetailPage() {
   const router = useRouter();
   const { boardId } = useParams<{ boardId: string }>();
-  const { role } = useTeamStore();
-  const { myUserId } = useAuthStore();
+  const { role, playerId: myPlayerId } = useTeamStore();
   const isManager = role === 'MANAGER';
 
   const [post, setPost] = useState<BoardDetail | null>(null);
@@ -71,7 +69,7 @@ export default function BoardDetailPage() {
     try {
       await boardApi.togglePin(post.boardId);
       setPost((p) => p ? { ...p, isPinned: !p.isPinned } : p);
-      toast.success(post.isPinned ? '고정이 해제되었습니다' : '게시글을 고정했습니다');
+      toast.success('게시글 고정 상태가 변경되었습니다');
     } catch {
       toast.error('처리에 실패했습니다');
     }
@@ -144,7 +142,7 @@ export default function BoardDetailPage() {
   };
 
   const isMyComment = (comment: Comment) =>
-    myUserId !== null && myUserId === `usr_${comment.authorId}`;
+    myPlayerId !== null && myPlayerId === comment.playerId;
 
   if (isLoading) {
     return (
@@ -235,10 +233,10 @@ export default function BoardDetailPage() {
         {/* Meta */}
         <div className="flex items-center gap-3 mb-6 pb-6 border-b border-white/5">
           <div className="w-7 h-7 rounded-full bg-[#00F5FF]/15 flex items-center justify-center text-[9px] font-black text-[#00F5FF]">
-            {post.authorName.slice(0, 2)}
+            {post.playerName.slice(0, 2)}
           </div>
           <div>
-            <p className="text-xs font-black text-zinc-300">{post.authorName}</p>
+            <p className="text-xs font-black text-zinc-300">{post.playerName}</p>
             <p className="text-[10px] font-bold text-zinc-600">{formatDate(post.createdAt)}</p>
           </div>
         </div>
@@ -261,12 +259,12 @@ export default function BoardDetailPage() {
               {post.comments.map((comment) => (
                 <div key={comment.commentId} className="flex gap-3">
                   <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center text-[9px] font-black text-zinc-500 flex-shrink-0 mt-0.5">
-                    {comment.authorName.slice(0, 2)}
+                    {comment.playerName.slice(0, 2)}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-zinc-300">{comment.authorName}</span>
+                        <span className="text-xs font-black text-zinc-300">{comment.playerName}</span>
                         <span className="text-[10px] font-bold text-zinc-600">{formatDate(comment.createdAt)}</span>
                       </div>
                       {(isMyComment(comment) || isManager) && editingCommentId !== comment.commentId && (

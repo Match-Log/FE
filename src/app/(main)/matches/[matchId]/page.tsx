@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { MapPin, Clock, Trophy, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
+import { MapPin, Clock, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 import { cn } from '@/lib/utils';
-import type { Match, Vote } from '@/types';
+import type { Match, VoteItem } from '@/types';
 
 function getInitials(name: string) {
   return name.slice(0, 2).toUpperCase();
@@ -34,14 +34,14 @@ export default function MatchInfoPage() {
   const matchId = Number(params.matchId);
 
   const [match, setMatch] = useState<Match | null>(null);
-  const [votes, setVotes] = useState<Vote[]>([]);
+  const [votes, setVotes] = useState<VoteItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
 
   useEffect(() => {
     if (!matchId) return;
     Promise.all([matchApi.getMatch(matchId), voteApi.getVotes(matchId)])
-      .then(([m, v]) => { setMatch(m.data); setVotes(v.data); })
+      .then(([m, v]) => { setMatch(m.data); setVotes(v.data.votes); })
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, [matchId]);
@@ -54,12 +54,12 @@ export default function MatchInfoPage() {
   const attendPct = total > 0 ? Math.round((attendees.length / total) * 100) : 0;
 
   const handleVote = async (status: 'ATTEND' | 'ABSENT') => {
-    if (!match || isVoting || match.status !== 'SCHEDULED') return;
+    if (!match || isVoting || match.isFinished) return;
     setIsVoting(true);
     try {
       await voteApi.vote(matchId, { status });
       const res = await voteApi.getVotes(matchId);
-      setVotes(res.data);
+      setVotes(res.data.votes);
     } catch {
       toast.error('투표에 실패했습니다');
     } finally {
@@ -83,8 +83,10 @@ export default function MatchInfoPage() {
     );
   }
 
-  const isScheduled = match.status === 'SCHEDULED';
-  const isCompleted = match.status === 'COMPLETED';
+  const isScheduled = !match.isFinished;
+  const isCompleted = match.isFinished;
+  const myScore = match.homeAway === 'HOME' ? match.scoreHome : match.scoreAway;
+  const opponentScore = match.homeAway === 'HOME' ? match.scoreAway : match.scoreHome;
 
   return (
     <main className="px-5 pt-6 pb-28 space-y-6 relative">
@@ -122,22 +124,22 @@ export default function MatchInfoPage() {
         </div>
 
         {/* VS */}
-        {isCompleted && match.myScore != null && match.opponentScore != null ? (
+        {isCompleted && myScore != null && opponentScore != null ? (
           <div className="text-center mb-6">
             <div className="flex items-center justify-center gap-6 mb-3">
               <div className="text-center">
                 <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">{teamName ?? 'My Team'}</p>
-                <p className="text-5xl font-black tabular-nums text-[#00F5FF]">{match.myScore}</p>
+                <p className="text-5xl font-black tabular-nums text-[#00F5FF]">{myScore}</p>
               </div>
               <p className="text-2xl font-black text-zinc-700">:</p>
               <div className="text-center">
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">{match.opponentTeam}</p>
-                <p className="text-5xl font-black tabular-nums text-zinc-400">{match.opponentScore}</p>
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">{match.opponent}</p>
+                <p className="text-5xl font-black tabular-nums text-zinc-400">{opponentScore}</p>
               </div>
             </div>
-            {match.myScore > match.opponentScore ? (
+            {myScore > opponentScore ? (
               <span className="text-[11px] font-black text-[#00F5FF] bg-[#00F5FF]/10 px-3 py-1 rounded-full border border-[#00F5FF]/20">승리</span>
-            ) : match.myScore < match.opponentScore ? (
+            ) : myScore < opponentScore ? (
               <span className="text-[11px] font-black text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">패배</span>
             ) : (
               <span className="text-[11px] font-black text-zinc-400 bg-zinc-700/30 px-3 py-1 rounded-full border border-zinc-700">무승부</span>
@@ -146,7 +148,7 @@ export default function MatchInfoPage() {
         ) : (
           <div className="text-center mb-6">
             <p className="text-3xl font-black italic uppercase tracking-tighter">
-              VS {match.opponentTeam}
+              VS {match.opponent}
             </p>
           </div>
         )}
@@ -161,20 +163,8 @@ export default function MatchInfoPage() {
             <MapPin className="w-4 h-4 text-zinc-600 flex-shrink-0 mt-0.5" />
             <span className="font-semibold">{match.location}</span>
           </div>
-          {match.leagueInfo && (
-            <div className="flex items-center gap-3 text-xs text-zinc-400">
-              <Trophy className="w-4 h-4 text-zinc-600 flex-shrink-0" />
-              <span className="font-semibold">{match.leagueInfo}</span>
-            </div>
-          )}
         </div>
 
-        {match.memo && (
-          <div className="mt-4 pt-4 border-t border-white/5">
-            <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1.5">메모</p>
-            <p className="text-xs text-zinc-400 font-semibold leading-relaxed">{match.memo}</p>
-          </div>
-        )}
       </section>
 
       {/* Map Preview placeholder */}
@@ -256,9 +246,9 @@ export default function MatchInfoPage() {
                   className="flex items-center gap-2 bg-[#00F5FF]/5 border border-[#00F5FF]/15 rounded-lg px-2.5 py-1.5"
                 >
                   <div className="w-5 h-5 rounded-full bg-[#00F5FF]/20 flex items-center justify-center text-[7px] font-black text-[#00F5FF]">
-                    {getInitials(v.playerName)}
+                    {getInitials(v.name)}
                   </div>
-                  <span className="text-[10px] font-black text-white">{v.playerName}</span>
+                  <span className="text-[10px] font-black text-white">{v.name}</span>
                 </div>
               ))}
             </div>
@@ -281,9 +271,9 @@ export default function MatchInfoPage() {
                   className="flex items-center gap-2 bg-purple-500/5 border border-purple-500/15 rounded-lg px-2.5 py-1.5"
                 >
                   <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center text-[7px] font-black text-purple-400">
-                    {getInitials(v.playerName)}
+                    {getInitials(v.name)}
                   </div>
-                  <span className="text-[10px] font-black text-zinc-400">{v.playerName}</span>
+                  <span className="text-[10px] font-black text-zinc-400">{v.name}</span>
                 </div>
               ))}
             </div>
@@ -306,9 +296,9 @@ export default function MatchInfoPage() {
                   className="flex items-center gap-2 bg-white/[0.02] border border-white/5 rounded-lg px-2.5 py-1.5"
                 >
                   <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[7px] font-black text-zinc-500">
-                    {getInitials(v.playerName)}
+                    {getInitials(v.name)}
                   </div>
-                  <span className="text-[10px] font-black text-zinc-600">{v.playerName}</span>
+                  <span className="text-[10px] font-black text-zinc-600">{v.name}</span>
                 </div>
               ))}
             </div>

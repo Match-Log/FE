@@ -12,14 +12,12 @@ import { useTeamStore } from '@/stores/teamStore';
 import { cn } from '@/lib/utils';
 
 const createMatchSchema = z.object({
-  matchType: z.enum(['SOCCER', 'FUTSAL']),
-  opponentTeam: z.string().min(2, '상대 팀 이름을 입력해주세요'),
+  matchType: z.enum(['SOCCER', 'FOOTBALL']),
+  opponent: z.string().min(2, '상대 팀 이름을 입력해주세요'),
   matchDate: z.string().min(1, '날짜를 선택해주세요'),
   matchTime: z.string().min(1, '시간을 선택해주세요'),
   homeAway: z.enum(['HOME', 'AWAY']),
   location: z.string().min(2, '장소를 입력해주세요'),
-  leagueInfo: z.string().optional(),
-  memo: z.string().optional(),
 });
 
 type CreateMatchForm = z.infer<typeof createMatchSchema>;
@@ -49,12 +47,10 @@ export default function CreateMatchPage() {
       const matchDate = `${data.matchDate}T${data.matchTime}:00`;
       await matchApi.createMatch(teamId, {
         matchType: data.matchType,
-        opponentTeam: data.opponentTeam,
+        opponent: data.opponent,
         matchDate,
         homeAway: data.homeAway,
         location: data.location,
-        leagueInfo: data.leagueInfo || undefined,
-        memo: data.memo || undefined,
       });
       toast.success('경기가 생성되었습니다');
       router.push('/schedule');
@@ -92,7 +88,7 @@ export default function CreateMatchPage() {
             control={control}
             render={({ field }) => (
               <div className="grid grid-cols-2 gap-3">
-                {(['SOCCER', 'FUTSAL'] as const).map((type) => (
+                {(['SOCCER', 'FOOTBALL'] as const).map((type) => (
                   <button
                     key={type}
                     type="button"
@@ -150,15 +146,15 @@ export default function CreateMatchPage() {
             상대 팀
           </label>
           <input
-            {...register('opponentTeam')}
+            {...register('opponent')}
             placeholder="상대 팀 이름"
             className={cn(
               'w-full bg-white/[0.03] border rounded-xl px-4 py-4 text-sm font-semibold placeholder-zinc-700 outline-none focus:border-[#00F5FF]/40 transition-colors',
-              errors.opponentTeam ? 'border-red-500/50' : 'border-white/5'
+              errors.opponent ? 'border-red-500/50' : 'border-white/5'
             )}
           />
-          {errors.opponentTeam && (
-            <p className="text-red-400 text-[10px] font-bold">{errors.opponentTeam.message}</p>
+          {errors.opponent && (
+            <p className="text-red-400 text-[10px] font-bold">{errors.opponent.message}</p>
           )}
         </section>
 
@@ -215,31 +211,6 @@ export default function CreateMatchPage() {
           {errors.location && (
             <p className="text-red-400 text-[10px] font-bold">{errors.location.message}</p>
           )}
-        </section>
-
-        {/* League Info (optional) */}
-        <section className="space-y-3">
-          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] block">
-            리그 / 대회명 <span className="text-zinc-700">(선택)</span>
-          </label>
-          <input
-            {...register('leagueInfo')}
-            placeholder="예: 서울시 아마추어 리그"
-            className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-4 py-4 text-sm font-semibold placeholder-zinc-700 outline-none focus:border-[#00F5FF]/40 transition-colors"
-          />
-        </section>
-
-        {/* Memo (optional) */}
-        <section className="space-y-3">
-          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] block">
-            메모 <span className="text-zinc-700">(선택)</span>
-          </label>
-          <textarea
-            {...register('memo')}
-            placeholder="팀원들에게 전달할 내용을 입력하세요"
-            rows={3}
-            className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-4 py-4 text-sm font-semibold placeholder-zinc-700 outline-none focus:border-[#00F5FF]/40 transition-colors resize-none"
-          />
         </section>
 
         {/* Submit */}

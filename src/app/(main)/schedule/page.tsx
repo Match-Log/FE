@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { matchApi } from '@/api/match';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
-import type { Match } from '@/types';
+import type { MatchListItem } from '@/types';
 import { cn } from '@/lib/utils';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -36,22 +36,19 @@ export default function SchedulePage() {
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [matches, setMatches] = useState<MatchListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!teamId) return;
-    Promise.all([
-      matchApi.getMatches(teamId, 'SCHEDULED'),
-      matchApi.getMatches(teamId, 'COMPLETED'),
-    ])
-      .then(([s, c]) => setMatches([...s.data, ...c.data]))
+    matchApi.getMatches(teamId)
+      .then((r) => setMatches(r.data))
       .catch(() => setMatches([]))
       .finally(() => setIsLoading(false));
   }, [teamId]);
 
   const matchByDate = useMemo(() => {
-    const map = new Map<string, Match[]>();
+    const map = new Map<string, MatchListItem[]>();
     matches.forEach((m) => {
       const key = getMatchDateKey(m.matchDate);
       if (!map.has(key)) map.set(key, []);
@@ -94,11 +91,11 @@ export default function SchedulePage() {
   const todayKey = toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
 
   const upcomingMatches = matches
-    .filter((m) => m.status === 'SCHEDULED')
+    .filter((m) => !m.isFinished)
     .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
 
   const pastMatches = matches
-    .filter((m) => m.status === 'COMPLETED')
+    .filter((m) => m.isFinished)
     .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime());
 
   const handleDayClick = (dateKey: string) => {
@@ -164,8 +161,8 @@ export default function SchedulePage() {
             {calendarCells.map((cell, i) => {
               const hasMatch = matchByDate.has(cell.dateKey);
               const matchesOnDay = matchByDate.get(cell.dateKey) ?? [];
-              const hasScheduled = matchesOnDay.some((m) => m.status === 'SCHEDULED');
-              const hasPast = matchesOnDay.some((m) => m.status === 'COMPLETED');
+              const hasScheduled = matchesOnDay.some((m) => !m.isFinished);
+              const hasPast = matchesOnDay.some((m) => m.isFinished);
               const isToday = cell.dateKey === todayKey;
 
               return (
@@ -218,7 +215,7 @@ export default function SchedulePage() {
                         </div>
                         <div>
                           <h4 className="text-sm font-black uppercase tracking-tight">
-                            vs {match.opponentTeam}
+                            vs {match.opponent}
                           </h4>
                           <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">
                             {match.location}
@@ -237,11 +234,6 @@ export default function SchedulePage() {
                       </span>
                     </div>
                     <div className="flex gap-2">
-                      {match.leagueInfo && (
-                        <span className="text-[9px] font-black text-[#00F5FF] bg-cyan-400/10 px-2.5 py-1.5 rounded-lg border border-cyan-400/20">
-                          {match.leagueInfo}
-                        </span>
-                      )}
                       <span className="text-[9px] font-black text-zinc-400 bg-zinc-800 px-2.5 py-1.5 rounded-lg">
                         {time} · {match.location}
                       </span>
@@ -259,11 +251,13 @@ export default function SchedulePage() {
             <h3 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] px-1">지난 경기</h3>
             {pastMatches.map((match) => {
               const { day, month } = formatListDate(match.matchDate);
-              const hasScore = match.myScore != null && match.opponentScore != null;
+              const myScore = match.homeAway === 'HOME' ? match.scoreHome : match.scoreAway;
+              const opponentScore = match.homeAway === 'HOME' ? match.scoreAway : match.scoreHome;
+              const hasScore = myScore != null && opponentScore != null;
               const won =
-                hasScore && match.myScore! > match.opponentScore!
+                hasScore && myScore! > opponentScore!
                   ? 'text-[#00F5FF]'
-                  : hasScore && match.myScore! < match.opponentScore!
+                  : hasScore && myScore! < opponentScore!
                   ? 'text-purple-400'
                   : 'text-zinc-400';
               return (
@@ -275,13 +269,13 @@ export default function SchedulePage() {
                         <span className="text-[8px] font-bold text-zinc-600">{month}</span>
                       </div>
                       <div>
-                        <h4 className="text-xs font-black uppercase">vs {match.opponentTeam}</h4>
+                        <h4 className="text-xs font-black uppercase">vs {match.opponent}</h4>
                         <p className="text-[8px] text-zinc-500 font-bold uppercase">{match.location}</p>
                       </div>
                     </div>
                     {hasScore && (
                       <span className={cn('text-sm font-black tracking-tighter', won)}>
-                        {match.myScore} : {match.opponentScore}
+                        {myScore} : {opponentScore}
                       </span>
                     )}
                   </div>
