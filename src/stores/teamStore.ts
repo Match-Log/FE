@@ -7,7 +7,7 @@ interface TeamStore {
   playerId: number | null;
   role: 'MANAGER' | 'PLAYER' | null;
   setTeam: (teamId: number, playerId: number, role: string, teamName?: string) => void;
-  setPlayerId: (playerId: number) => void;
+  setPlayerId: (playerId: number | null) => void;
   clear: () => void;
 }
 
