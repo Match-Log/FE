@@ -37,6 +37,7 @@ export type Position =
   | 'LW' | 'RW' | 'ST' | 'CF';
 
 export type PreferredFoot = 'LEFT' | 'RIGHT' | 'BOTH';
+export type Career = 'AMATEUR' | 'MIDDLE_SCHOOL' | 'HIGH_SCHOOL' | 'UNIVERSITY' | 'ACTIVE';
 
 // Player - matches PlayerProfileResponseDto / RegisterPlayerResponseDto
 export interface Player {
@@ -46,7 +47,7 @@ export interface Player {
   height?: number;
   weight?: number;
   preferredFoot?: PreferredFoot;
-  career?: string;
+  career?: Career;
   preferredPosition?: Position;
   subPosition?: Position;
   createdAt?: string;

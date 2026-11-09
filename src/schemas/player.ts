@@ -6,6 +6,7 @@ const POSITIONS = [
   'LW', 'RW', 'ST', 'CF',
 ] as const;
 const PREFERRED_FOOT = ['LEFT', 'RIGHT', 'BOTH'] as const;
+const CAREERS = ['AMATEUR', 'MIDDLE_SCHOOL', 'HIGH_SCHOOL', 'UNIVERSITY', 'ACTIVE'] as const;
 
 const optionalInt = (min: number, max: number) =>
   z.preprocess(
@@ -18,7 +19,7 @@ export const registerPlayerSchema = z.object({
   height: optionalInt(100, 250),
   weight: optionalInt(30, 200),
   preferredFoot: z.enum(PREFERRED_FOOT).optional(),
-  career: z.string().optional(),
+  career: z.enum(CAREERS).optional(),
   preferredPosition: z.enum(POSITIONS).optional(),
   subPosition: z.enum(POSITIONS).optional(),
 });

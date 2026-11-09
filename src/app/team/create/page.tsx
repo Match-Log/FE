@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronLeft, MapPin, ShieldHalf } from 'lucide-react';
+import { CalendarDays, ChevronLeft, Landmark, MapPin, ShieldHalf } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { teamApi } from '@/api/team';
-import { createTeamSchema, type CreateTeamFormData } from '@/schemas/team';
+import { createTeamSchema, type CreateTeamFormData, type CreateTeamFormInput } from '@/schemas/team';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 
@@ -19,10 +19,15 @@ export default function CreateTeamPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
-  } = useForm<CreateTeamFormData>({
+  } = useForm<CreateTeamFormInput, unknown, CreateTeamFormData>({
     resolver: zodResolver(createTeamSchema),
   });
+
+  const teamImageUrl = watch('teamImage');
+  const [previewError, setPreviewError] = useState(false);
+  const showPreview = typeof teamImageUrl === 'string' && teamImageUrl.trim() !== '' && !previewError;
 
   const onSubmit = async (data: CreateTeamFormData) => {
     setIsLoading(true);
@@ -75,26 +80,47 @@ export default function CreateTeamPage() {
         </header>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 relative z-10">
-          {/* 팀 엠블럼 (UI only) */}
+          {/* 팀 엠블럼 */}
           <div className="space-y-3">
             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">
               Team Emblem
             </label>
             <div className="flex items-center gap-6 p-6 rounded-sm bg-zinc-900/30 border border-white/5">
-              <div className="w-20 h-20 rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center cursor-pointer group hover:border-[#00F5FF]/50 transition-all">
-                <ShieldHalf className="w-6 h-6 text-zinc-700 group-hover:text-[#00F5FF] transition-colors" />
-                <span className="text-[8px] font-black text-zinc-600 mt-2 uppercase tracking-tighter">
-                  Upload
-                </span>
+              <div className="w-20 h-20 shrink-0 rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center overflow-hidden">
+                {showPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={teamImageUrl}
+                    alt="팀 로고 미리보기"
+                    className="w-full h-full object-cover"
+                    onError={() => setPreviewError(true)}
+                  />
+                ) : (
+                  <>
+                    <ShieldHalf className="w-6 h-6 text-zinc-700" />
+                    <span className="text-[8px] font-black text-zinc-600 mt-2 uppercase tracking-tighter">
+                      Preview
+                    </span>
+                  </>
+                )}
               </div>
-              <div className="flex-grow">
+              <div className="flex-grow min-w-0 space-y-2">
                 <p className="text-[11px] text-zinc-400 leading-snug">
-                  팀을 상징하는 로고를 등록해주세요.
+                  팀을 상징하는 로고 이미지 URL을 입력해주세요.
                   <br />
                   <span className="text-[9px] text-zinc-600">Square ratio recommended (PNG, JPG)</span>
                 </p>
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  {...register('teamImage', { onChange: () => setPreviewError(false) })}
+                  className="w-full bg-zinc-900/50 border-0 border-b-2 border-b-zinc-800 py-2 px-3 text-xs text-white placeholder-zinc-600 focus:border-b-[#00F5FF] transition-all outline-none"
+                />
               </div>
             </div>
+            {errors.teamImage && (
+              <p className="text-xs text-red-400 ml-1">{errors.teamImage.message}</p>
+            )}
           </div>
 
           {/* 팀명 */}
@@ -129,6 +155,45 @@ export default function CreateTeamPage() {
             </div>
             {errors.region && (
               <p className="text-xs text-red-400 ml-1">{errors.region.message}</p>
+            )}
+          </div>
+
+          {/* 창단 연도 */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">
+              Founded Year
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="창단 연도 (예: 2020)"
+                {...register('foundedYear')}
+                className="w-full bg-zinc-900/50 border-0 border-b-2 border-b-zinc-800 py-4 px-4 text-sm text-white placeholder-zinc-600 focus:border-b-[#00F5FF] transition-all outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <CalendarDays className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-700" />
+            </div>
+            {errors.foundedYear && (
+              <p className="text-xs text-red-400 ml-1">{errors.foundedYear.message}</p>
+            )}
+          </div>
+
+          {/* 홈 구장 */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">
+              Home Ground
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="홈 구장 (예: 망원한강공원 축구장)"
+                {...register('homeGround')}
+                className="w-full bg-zinc-900/50 border-0 border-b-2 border-b-zinc-800 py-4 px-4 text-sm text-white placeholder-zinc-600 focus:border-b-[#00F5FF] transition-all outline-none"
+              />
+              <Landmark className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-700" />
+            </div>
+            {errors.homeGround && (
+              <p className="text-xs text-red-400 ml-1">{errors.homeGround.message}</p>
             )}
           </div>
 

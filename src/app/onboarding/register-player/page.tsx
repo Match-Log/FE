@@ -26,6 +26,14 @@ const PREFERRED_FOOT = [
   { value: 'BOTH', label: '양발' },
 ] as const;
 
+const CAREER_OPTIONS = [
+  { value: 'MIDDLE_SCHOOL', label: '중등부' },
+  { value: 'HIGH_SCHOOL', label: '고등부' },
+  { value: 'UNIVERSITY', label: '대학부' },
+  { value: 'AMATEUR', label: '아마추어' },
+  { value: 'ACTIVE', label: '현역' },
+] as const;
+
 export default function RegisterPlayerPage() {
   const router = useRouter();
   const { setPlayerId } = useTeamStore();
@@ -45,6 +53,7 @@ export default function RegisterPlayerPage() {
   const preferredPosition = watch('preferredPosition');
   const subPosition = watch('subPosition');
   const preferredFoot = watch('preferredFoot');
+  const career = watch('career');
 
   const onSubmit = async (data: RegisterPlayerFormData) => {
     console.log('[RegisterPlayer] 제출 데이터:', data);
@@ -293,12 +302,23 @@ export default function RegisterPlayerPage() {
               <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">
                 경력 (선택)
               </label>
-              <input
-                type="text"
-                placeholder="ex) 고등부 주전, 조기축구회 5년"
-                {...register('career')}
-                className="w-full bg-zinc-900/50 border-0 border-b-2 border-b-zinc-800 py-4 px-4 text-sm text-white placeholder-zinc-600 focus:border-b-[#00F5FF] transition-all outline-none"
-              />
+              <div className="grid grid-cols-3 gap-3">
+                {CAREER_OPTIONS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setValue('career', career === value ? undefined : value)}
+                    className={cn(
+                      'py-4 border-2 rounded-sm text-[11px] font-black uppercase tracking-widest transition-all',
+                      career === value
+                        ? 'border-[#00F5FF] bg-[#00F5FF]/10 text-[#00F5FF]'
+                        : 'border-zinc-800 text-zinc-400 hover:border-zinc-600'
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
 

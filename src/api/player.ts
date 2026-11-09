@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Player, Position, PreferredFoot } from '@/types';
+import type { Career, Player, Position, PreferredFoot } from '@/types';
 
 export const playerApi = {
   registerPlayer: (data: {
@@ -7,7 +7,7 @@ export const playerApi = {
     height?: number;
     weight?: number;
     preferredFoot?: PreferredFoot;
-    career?: string;
+    career?: Career;
     preferredPosition?: Position;
     subPosition?: Position;
   }) => apiClient.post<Player>('/api/v1/players', data),
