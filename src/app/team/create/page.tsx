@@ -13,7 +13,7 @@ import GridBackground from '@/components/common/GridBackground';
 
 export default function CreateTeamPage() {
   const router = useRouter();
-  const { setTeam } = useTeamStore();
+  const { playerId, setTeam } = useTeamStore();
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -34,9 +34,9 @@ export default function CreateTeamPage() {
     try {
       const res = await teamApi.createTeam(data);
       const team = res.data;
-      setTeam(team.teamId, 0, 'MANAGER', team.name);
+      setTeam(team.teamId, playerId ?? 0, 'MANAGER', team.name);
       toast.success('팀이 생성되었습니다!');
-      router.push('/onboarding/register-player');
+      router.push('/home');
     } catch (err: unknown) {
       const message =
         err && typeof err === 'object' && 'response' in err

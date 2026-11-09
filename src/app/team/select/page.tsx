@@ -24,6 +24,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { teamApi } from '@/api/team';
 import { authApi } from '@/api/auth';
+import { playerApi } from '@/api/player';
 import { joinTeamSchema, type JoinTeamFormData } from '@/schemas/team';
 import { useTeamStore } from '@/stores/teamStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -32,10 +33,11 @@ import GridBackground from '@/components/common/GridBackground';
 
 export default function TeamSelectPage() {
   const router = useRouter();
-  const { playerId, setTeam, clear } = useTeamStore();
+  const { playerId, setTeam, setPlayerId, clear } = useTeamStore();
   const { logout } = useAuthStore();
   const [teams, setTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingPlayer, setIsCheckingPlayer] = useState(true);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -48,6 +50,22 @@ export default function TeamSelectPage() {
     reset: resetJoin,
     formState: { errors: joinErrors },
   } = useForm<JoinTeamFormData>({ resolver: zodResolver(joinTeamSchema) });
+
+  // 선수 등록 여부는 서버(DB) 기준으로 확인한다. 브라우저 저장값은 다른 브라우저/재로그인 시 비어 있을 수 있음.
+  useEffect(() => {
+    playerApi
+      .getMyPlayer()
+      .then((res) => setPlayerId(res.data.playerId))
+      .catch((err: unknown) => {
+        const status =
+          err && typeof err === 'object' && 'response' in err
+            ? (err as { response?: { status?: number } }).response?.status
+            : undefined;
+        // 404 = 미등록. 그 외 오류(네트워크 등)는 기존 저장값을 유지한다.
+        if (status === 404) setPlayerId(null);
+      })
+      .finally(() => setIsCheckingPlayer(false));
+  }, [setPlayerId]);
 
   useEffect(() => {
     teamApi
@@ -97,7 +115,7 @@ export default function TeamSelectPage() {
   };
 
   const nameInitials = userName.slice(0, 2);
-  const isPlayerRegistered = playerId !== null;
+  const isPlayerRegistered = playerId !== null && playerId !== 0;
 
   return (
     <div className="min-h-screen bg-[#05060B] text-white flex flex-col max-w-md mx-auto relative">
@@ -125,14 +143,16 @@ export default function TeamSelectPage() {
             <span className="accent-gradient-text italic">{userName}님</span> 👋
           </h1>
           <p className="text-zinc-500 text-xs font-bold tracking-widest uppercase">
-            {isPlayerRegistered
+            {isCheckingPlayer
+              ? 'Syncing player data...'
+              : isPlayerRegistered
               ? '참여할 팀을 선택하고 데이터를 확인하세요.'
               : 'Protocol: Pending Player Activation'}
           </p>
         </header>
 
         {/* === 미등록 상태 === */}
-        {!isPlayerRegistered && (
+        {!isCheckingPlayer && !isPlayerRegistered && (
           <>
             <section className="relative z-10 mb-6">
               <div className="bg-zinc-900/40 border-l-4 border-[#00F5FF] p-5 rounded-r-sm">
@@ -205,7 +225,7 @@ export default function TeamSelectPage() {
         )}
 
         {/* === 등록된 상태 === */}
-        {isPlayerRegistered && (
+        {!isCheckingPlayer && isPlayerRegistered && (
           <>
             {/* 팀 목록 */}
             {!isLoading && teams.length > 0 && (
