@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Home as HomeIcon, Bell, Settings, ChevronRight, Users, Megaphone, History } from 'lucide-react';
+import { ChevronLeft, Bell, Settings, ChevronRight, Users, Megaphone, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
@@ -116,9 +116,13 @@ export default function HomePage() {
       {/* Header */}
       <header className="px-6 pt-10 pb-6 flex items-center justify-between sticky top-0 bg-[#05060B]/80 backdrop-blur-md z-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 flex items-center justify-center bg-[#111218] border border-white/5 rounded-xl">
-            <HomeIcon className="w-4 h-4 text-zinc-400" />
-          </div>
+          <Link
+            href="/team/select"
+            aria-label="팀 선택으로 돌아가기"
+            className="w-10 h-10 flex items-center justify-center bg-[#111218] border border-white/5 rounded-xl hover:border-[#00F5FF]/30 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4 text-zinc-400" />
+          </Link>
           <h1 className="text-xl font-black tracking-tight italic uppercase">{displayTeamName}</h1>
         </div>
         <div className="flex items-center gap-2">

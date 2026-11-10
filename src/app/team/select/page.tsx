@@ -127,8 +127,21 @@ export default function TeamSelectPage() {
             Match<span className="text-[#00F5FF]">Log</span>
           </span>
         </div>
-        <div className="w-10 h-10 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden">
-          <span className="text-[10px] font-black text-[#00F5FF]">{nameInitials}</span>
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden">
+            <span className="text-[10px] font-black text-[#00F5FF]">{nameInitials}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            aria-label="로그아웃"
+            className="h-10 px-3 rounded-xl bg-zinc-900 border border-white/10 flex items-center gap-1.5 hover:border-rose-500/40 hover:bg-rose-500/5 transition-colors group"
+          >
+            <LogOut className="w-4 h-4 text-rose-500/60 group-hover:text-rose-500" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-rose-500/70 group-hover:text-rose-500">
+              로그아웃
+            </span>
+          </button>
         </div>
       </nav>
 
