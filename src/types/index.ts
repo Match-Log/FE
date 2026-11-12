@@ -1,3 +1,7 @@
+// ※ BE 응답 규칙: 기본형 `boolean isXxx` 필드는 JSON에서 `is` 없이 `xxx`로 나간다 (Jackson 기본 동작, BE 프로젝트 규칙).
+//   예) finished, voteDeadlinePassed, starter, pinned. 래퍼형 `Boolean isXxx`는 `isXxx` 그대로 (예: Feedback.isVisible).
+//   요청(request)은 BE DTO 필드 이름을 따른다.
+
 // Auth
 export interface LoginResponse {
   accessToken: string;
@@ -62,8 +66,8 @@ export interface Match {
   matchType: 'SOCCER' | 'FOOTBALL';
   scoreHome?: number;
   scoreAway?: number;
-  isFinished: boolean;
-  isVoteDeadlinePassed?: boolean;
+  finished: boolean;
+  voteDeadlinePassed?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -78,7 +82,7 @@ export interface MatchListItem {
   matchType: 'SOCCER' | 'FOOTBALL';
   scoreHome?: number;
   scoreAway?: number;
-  isFinished: boolean;
+  finished: boolean;
 }
 
 // VoteItem - matches VoteItemResponseDto
@@ -138,7 +142,7 @@ export interface LineupSpot {
   guestId?: number;
   name?: string;
   position: string;
-  isStarter: boolean;
+  starter: boolean;
 }
 
 // LineupSpotRequest - for saving lineup
@@ -209,7 +213,7 @@ export interface BoardPost {
   playerName: string;
   title: string;
   matchId?: number;
-  isPinned?: boolean;
+  pinned?: boolean;
   createdAt: string;
 }
 
@@ -222,7 +226,7 @@ export interface BoardDetail {
   title: string;
   content: string;
   matchId?: number;
-  isPinned?: boolean;
+  pinned?: boolean;
   createdAt: string;
   updatedAt?: string;
   comments: Comment[];

@@ -8,15 +8,15 @@ import { lineupApi } from '@/api/lineup';
 import { participationApi } from '@/api/participation';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
-import { cn } from '@/lib/utils';
+import { cn, getNameInitials } from '@/lib/utils';
 import type { RosterItem, KickerRole, KickerAssignment, LineupSpot } from '@/types';
-import { GK, getLineupCategory, getPositionCategory, type LineupPosition } from '@/constants/position';
+import { getLineupCategory, getPositionCategory, type LineupPosition } from '@/constants/position';
 
 // ── Formation definitions ──────────────────────────────────────────────────
 
 type FormationName = '4-3-3' | '4-2-3-1' | '4-4-2' | '3-5-2' | '5-3-2' | '4-1-4-1';
 
-// label은 서버에 저장되는 포지션 값이다. 선수 포지션(BE enum) + GK만 쓴다.
+// label은 서버에 저장되는 포지션 값이다. 선수 포지션(BE enum)과 같은 값만 쓴다.
 interface SlotDef { id: string; label: LineupPosition; x: number; y: number }
 
 const FORMATIONS: Record<FormationName, SlotDef[]> = {
@@ -79,9 +79,6 @@ const KICKER_ROLES: { role: KickerRole; label: string; color: string; bg: string
   { role: 'RIGHT_FK', label: 'Right Free Kick', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
 ];
 
-function getInitials(name: string) {
-  return name.slice(0, 2);
-}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -316,18 +313,17 @@ export default function FormationPage() {
     };
   }, [placePlayer, removeFromPitch]);
 
-  // 자동 배치: ① 주 포지션이 자리와 정확히 같은 선수 → ② 주 포지션 분류(DF/MF/FW)가 같은 선수
-  // → ③ 부 포지션 분류가 같은 선수 → ④ 남은 자리(GK 포함)에 남은 선수 순서로 채운다.
+  // 자동 배치: ① 주 포지션이 자리와 정확히 같은 선수 → ② 주 포지션 분류(GK/DF/MF/FW)가 같은 선수
+  // → ③ 부 포지션 분류가 같은 선수 → ④ 남은 자리에 남은 선수 순서로 채운다.
   const autoFormation = useCallback(() => {
     if (!isManager) return;
     const slotList = FORMATIONS[formation];
     const newMap: Record<string, number> = {};
     const used = new Set<number>();
 
-    const fill = (match: (slot: SlotDef, p: RosterItem) => boolean, includeGK: boolean) => {
+    const fill = (match: (slot: SlotDef, p: RosterItem) => boolean) => {
       for (const slot of slotList) {
         if (newMap[slot.id] !== undefined) continue;
-        if (slot.label === GK && !includeGK) continue;
         const p = players.find((pl) => !used.has(pl.playerId) && match(slot, pl));
         if (!p) continue;
         used.add(p.playerId);
@@ -335,10 +331,10 @@ export default function FormationPage() {
       }
     };
 
-    fill((slot, p) => p.mainPosition === slot.label, false);
-    fill((slot, p) => getPositionCategory(p.mainPosition) === getLineupCategory(slot.label), false);
-    fill((slot, p) => getPositionCategory(p.subPosition) === getLineupCategory(slot.label), false);
-    fill(() => true, true);
+    fill((slot, p) => p.mainPosition === slot.label);
+    fill((slot, p) => getPositionCategory(p.mainPosition) === getLineupCategory(slot.label));
+    fill((slot, p) => getPositionCategory(p.subPosition) === getLineupCategory(slot.label));
+    fill(() => true);
 
     setSlotAssignments(newMap);
     setSelectedPlayerId(null);
@@ -485,7 +481,7 @@ export default function FormationPage() {
                       : 'bg-zinc-900 border border-white/10 text-zinc-400 hover:border-[#00F5FF]/40'
                   )}
                 >
-                  {getInitials(p.name)}
+                  {getNameInitials(p.name)}
                 </div>
                 <span className={cn('text-[7px] font-black uppercase', isPlaced ? 'text-[#00F5FF]' : 'text-zinc-600')}>
                   {p.mainPosition}
@@ -601,7 +597,7 @@ export default function FormationPage() {
                           isDragSource && 'opacity-30'
                         )}
                       >
-                        {getInitials(assignedPlayer.name)}
+                        {getNameInitials(assignedPlayer.name)}
                       </div>
                     )}
                     <span className={cn('text-[7px] font-black uppercase tracking-widest', isEmpty ? 'text-zinc-600' : 'text-zinc-400')}>
@@ -753,7 +749,7 @@ export default function FormationPage() {
           className="fixed z-[60] pointer-events-none -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#00F5FF] text-black flex items-center justify-center text-[9px] font-black shadow-[0_0_20px_rgba(0,245,255,0.6)]"
           style={{ left: drag.x, top: drag.y }}
         >
-          {getInitials(draggedPlayer.name)}
+          {getNameInitials(draggedPlayer.name)}
         </div>
       )}
     </div>

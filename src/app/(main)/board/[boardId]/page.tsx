@@ -1,5 +1,6 @@
 'use client';
 
+import { getNameInitials } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ChevronLeft, Pin, Pencil, Trash2, Send, MoreVertical } from 'lucide-react';
@@ -68,7 +69,7 @@ export default function BoardDetailPage() {
     if (!post) return;
     try {
       await boardApi.togglePin(post.boardId);
-      setPost((p) => p ? { ...p, isPinned: !p.isPinned } : p);
+      setPost((p) => p ? { ...p, pinned: !p.pinned } : p);
       toast.success('게시글 고정 상태가 변경되었습니다');
     } catch {
       toast.error('처리에 실패했습니다');
@@ -188,7 +189,7 @@ export default function BoardDetailPage() {
                     className="w-full px-4 py-3 text-left text-xs font-bold text-zinc-300 hover:bg-white/5 flex items-center gap-2"
                   >
                     <Pin className="w-3.5 h-3.5 text-[#00F5FF]" />
-                    {post.isPinned ? '고정 해제' : '게시글 고정'}
+                    {post.pinned ? '고정 해제' : '게시글 고정'}
                   </button>
                   <button
                     onClick={() => {
@@ -220,7 +221,7 @@ export default function BoardDetailPage() {
       {/* Post content */}
       <main className="flex-1 px-6 pt-6 pb-32">
         {/* Pinned indicator */}
-        {post.isPinned && (
+        {post.pinned && (
           <div className="flex items-center gap-1.5 mb-4">
             <Pin className="w-3 h-3 text-[#00F5FF]" />
             <span className="text-[10px] font-black text-[#00F5FF] uppercase tracking-widest">Pinned</span>
@@ -233,7 +234,7 @@ export default function BoardDetailPage() {
         {/* Meta */}
         <div className="flex items-center gap-3 mb-6 pb-6 border-b border-white/5">
           <div className="w-7 h-7 rounded-full bg-[#00F5FF]/15 flex items-center justify-center text-[9px] font-black text-[#00F5FF]">
-            {post.playerName.slice(0, 2)}
+            {getNameInitials(post.playerName)}
           </div>
           <div>
             <p className="text-xs font-black text-zinc-300">{post.playerName}</p>
@@ -259,7 +260,7 @@ export default function BoardDetailPage() {
               {post.comments.map((comment) => (
                 <div key={comment.commentId} className="flex gap-3">
                   <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center text-[9px] font-black text-zinc-500 flex-shrink-0 mt-0.5">
-                    {comment.playerName.slice(0, 2)}
+                    {getNameInitials(comment.playerName)}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">

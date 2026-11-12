@@ -10,7 +10,7 @@ import { feedbackApi } from '@/api/feedback';
 import { participationApi } from '@/api/participation';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
-import { cn } from '@/lib/utils';
+import { cn, getNameInitials } from '@/lib/utils';
 import type { Player, PlayerStat, Feedback, MatchListItem, RosterItem } from '@/types';
 
 type ProfileTab = 'info' | 'feedback';
@@ -20,9 +20,6 @@ function formatDate(dateStr?: string) {
   return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(dateStr));
 }
 
-function getInitials(name: string) {
-  return name.slice(0, 2);
-}
 
 export default function PlayerProfilePage() {
   const params = useParams<{ playerId: string }>();
@@ -56,7 +53,7 @@ export default function PlayerProfilePage() {
         setRosterItem(roster);
 
         const completedMatches: MatchListItem[] = matchesRes.data
-          .filter((m) => m.isFinished)
+          .filter((m) => m.finished)
           .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime())
           .slice(0, 8);
 
@@ -140,7 +137,7 @@ export default function PlayerProfilePage() {
           <div className="relative shrink-0">
             <div className="w-28 h-28 rounded-[32px] overflow-hidden border-2 border-cyan-500/30 p-1 bg-gradient-to-tr from-cyan-500/20 to-purple-500/20">
               <div className="w-full h-full rounded-[26px] bg-[#111218] flex items-center justify-center text-3xl font-black text-[#00F5FF]">
-                {rosterItem ? getInitials(rosterItem.name) : '??'}
+                {rosterItem ? getNameInitials(rosterItem.name) : '??'}
               </div>
             </div>
             <div className="absolute -bottom-2 -right-2 bg-gradient-to-br from-cyan-400 to-blue-600 w-10 h-10 rounded-2xl flex items-center justify-center border-4 border-[#05060B] shadow-lg">

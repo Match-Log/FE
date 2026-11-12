@@ -30,6 +30,7 @@ import { useTeamStore } from '@/stores/teamStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { Team } from '@/types';
 import GridBackground from '@/components/common/GridBackground';
+import { getNameInitials } from '@/lib/utils';
 
 export default function TeamSelectPage() {
   const router = useRouter();
@@ -101,7 +102,7 @@ export default function TeamSelectPage() {
     }
   };
 
-  const nameInitials = userName.slice(0, 2);
+  const nameInitials = getNameInitials(userName);
   const isPlayerRegistered = playerId !== null && playerId !== 0;
 
   return (

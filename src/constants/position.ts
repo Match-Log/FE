@@ -1,17 +1,20 @@
 // 포지션 기준 — BE `constant/lineup/Position` enum과 1:1로 맞춘다.
 // BE enum이 바뀌면 이 파일만 고치면 된다.
 
-export type PositionCategory = 'DF' | 'MF' | 'FW';
+export type PositionCategory = 'GK' | 'DF' | 'MF' | 'FW';
 
-export const POSITION_CATEGORIES: readonly PositionCategory[] = ['DF', 'MF', 'FW'];
+export const POSITION_CATEGORIES: readonly PositionCategory[] = ['GK', 'DF', 'MF', 'FW'];
 
 export const POSITION_CATEGORY_LABELS: Record<PositionCategory, string> = {
+  GK: 'Goalkeeper',
   DF: 'Defender',
   MF: 'Midfielder',
   FW: 'Forward',
 };
 
 export const POSITIONS = [
+  // Goalkeeper
+  'GK',
   // Defender
   'CB', 'LB', 'RB', 'WB',
   // Midfielder
@@ -23,6 +26,8 @@ export const POSITIONS = [
 export type Position = (typeof POSITIONS)[number];
 
 export const POSITION_INFO: Record<Position, { description: string; category: PositionCategory }> = {
+  GK: { description: '골키퍼', category: 'GK' },
+
   CB: { description: '센터백', category: 'DF' },
   LB: { description: '레프트백', category: 'DF' },
   RB: { description: '라이트백', category: 'DF' },
@@ -42,6 +47,7 @@ export const POSITION_INFO: Record<Position, { description: string; category: Po
 };
 
 export const POSITIONS_BY_CATEGORY: Record<PositionCategory, Position[]> = {
+  GK: POSITIONS.filter((p) => POSITION_INFO[p].category === 'GK'),
   DF: POSITIONS.filter((p) => POSITION_INFO[p].category === 'DF'),
   MF: POSITIONS.filter((p) => POSITION_INFO[p].category === 'MF'),
   FW: POSITIONS.filter((p) => POSITION_INFO[p].category === 'FW'),
@@ -56,16 +62,11 @@ export function getPositionCategory(pos?: string | null): PositionCategory | nul
   return isPosition(pos) ? POSITION_INFO[pos].category : null;
 }
 
-// ── 라인업 전용 ──────────────────────────────────────────────────────────────
-// GK는 선수 포지션(BE enum)에는 없고 라인업 자리에서만 쓴다.
-// BE 라인업 spot의 position은 문자열이라 'GK'도 그대로 저장된다.
+// ── 라인업 ──────────────────────────────────────────────────────────────────
+// 라인업 자리(slot)도 같은 포지션 값을 쓴다. BE 라인업 spot의 position은 문자열로 저장된다.
 
-export const GK = 'GK' as const;
+export type LineupPosition = Position;
 
-export type LineupPosition = Position | typeof GK;
-
-export type LineupCategory = typeof GK | PositionCategory;
-
-export function getLineupCategory(pos: LineupPosition): LineupCategory {
-  return pos === GK ? GK : POSITION_INFO[pos].category;
+export function getLineupCategory(pos: LineupPosition): PositionCategory {
+  return POSITION_INFO[pos].category;
 }

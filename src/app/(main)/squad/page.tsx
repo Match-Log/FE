@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { participationApi } from '@/api/participation';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
-import { cn } from '@/lib/utils';
+import { cn, getNameInitials } from '@/lib/utils';
 import type { RosterItem } from '@/types';
 import {
   POSITION_CATEGORIES,
@@ -21,9 +21,6 @@ const POSITION_FILTERS: PositionFilter[] = ['ALL', ...POSITION_CATEGORIES];
 type SquadGroup = PositionCategory | 'NONE';
 const GROUP_LABELS: Record<SquadGroup, string> = { ...POSITION_CATEGORY_LABELS, NONE: '포지션 미지정' };
 
-function getInitials(name: string) {
-  return name.slice(0, 2);
-}
 
 export default function SquadPage() {
   const { teamId, teamName } = useTeamStore();
@@ -130,7 +127,7 @@ export default function SquadPage() {
                         <div className="flex items-center gap-5">
                           <div className="w-14 h-14 rounded-full flex items-center justify-center text-[13px] font-black uppercase tracking-tighter border border-[#00F5FF]/15 shadow-[inset_0_0_10px_rgba(0,245,255,0.05)] text-[#00F5FF]"
                             style={{ background: 'linear-gradient(135deg, #1A1B23 0%, #08090E 100%)' }}>
-                            {getInitials(player.name)}
+                            {getNameInitials(player.name)}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
