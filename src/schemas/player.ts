@@ -1,10 +1,6 @@
 import { z } from 'zod';
+import { POSITIONS } from '@/constants/position';
 
-const POSITIONS = [
-  'CB', 'LB', 'RB', 'WB',
-  'CDM', 'CM', 'LM', 'RM', 'CAM', 'AM',
-  'LW', 'RW', 'ST', 'CF',
-] as const;
 const PREFERRED_FOOT = ['LEFT', 'RIGHT', 'BOTH'] as const;
 const CAREERS = ['AMATEUR', 'MIDDLE_SCHOOL', 'HIGH_SCHOOL', 'UNIVERSITY', 'ACTIVE'] as const;
 

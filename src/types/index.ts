@@ -31,10 +31,8 @@ export interface TeamDetail {
 }
 
 // Position - matches BE Position enum (GK is not supported by BE)
-export type Position =
-  | 'CB' | 'LB' | 'RB' | 'WB'
-  | 'CDM' | 'CM' | 'LM' | 'RM' | 'CAM' | 'AM'
-  | 'LW' | 'RW' | 'ST' | 'CF';
+export type { Position } from '@/constants/position';
+import type { Position } from '@/constants/position';
 
 export type PreferredFoot = 'LEFT' | 'RIGHT' | 'BOTH';
 export type Career = 'AMATEUR' | 'MIDDLE_SCHOOL' | 'HIGH_SCHOOL' | 'UNIVERSITY' | 'ACTIVE';

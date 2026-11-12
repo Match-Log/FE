@@ -10,12 +10,14 @@ import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 import { cn } from '@/lib/utils';
 import type { RosterItem, KickerRole, KickerAssignment, LineupSpot } from '@/types';
+import { GK, getLineupCategory, getPositionCategory, type LineupPosition } from '@/constants/position';
 
 // ── Formation definitions ──────────────────────────────────────────────────
 
 type FormationName = '4-3-3' | '4-2-3-1' | '4-4-2' | '3-5-2' | '5-3-2' | '4-1-4-1';
 
-interface SlotDef { id: string; label: string; x: number; y: number }
+// label은 서버에 저장되는 포지션 값이다. 선수 포지션(BE enum) + GK만 쓴다.
+interface SlotDef { id: string; label: LineupPosition; x: number; y: number }
 
 const FORMATIONS: Record<FormationName, SlotDef[]> = {
   '4-3-3': [
@@ -44,14 +46,14 @@ const FORMATIONS: Record<FormationName, SlotDef[]> = {
   '3-5-2': [
     { id: 'GK', label: 'GK', x: 50, y: 86 },
     { id: 'CB1', label: 'CB', x: 25, y: 73 }, { id: 'CB2', label: 'CB', x: 50, y: 76 }, { id: 'CB3', label: 'CB', x: 75, y: 73 },
-    { id: 'LWB', label: 'LWB', x: 10, y: 52 }, { id: 'CM1', label: 'CM', x: 30, y: 50 },
-    { id: 'CM2', label: 'CM', x: 50, y: 52 }, { id: 'CM3', label: 'CM', x: 70, y: 50 }, { id: 'RWB', label: 'RWB', x: 90, y: 52 },
+    { id: 'LWB', label: 'WB', x: 10, y: 52 }, { id: 'CM1', label: 'CM', x: 30, y: 50 },
+    { id: 'CM2', label: 'CM', x: 50, y: 52 }, { id: 'CM3', label: 'CM', x: 70, y: 50 }, { id: 'RWB', label: 'WB', x: 90, y: 52 },
     { id: 'ST1', label: 'ST', x: 36, y: 18 }, { id: 'ST2', label: 'ST', x: 64, y: 18 },
   ],
   '5-3-2': [
     { id: 'GK', label: 'GK', x: 50, y: 86 },
-    { id: 'LWB', label: 'LWB', x: 8, y: 70 }, { id: 'LCB', label: 'CB', x: 28, y: 74 },
-    { id: 'CB', label: 'CB', x: 50, y: 76 }, { id: 'RCB', label: 'CB', x: 72, y: 74 }, { id: 'RWB', label: 'RWB', x: 92, y: 70 },
+    { id: 'LWB', label: 'WB', x: 8, y: 70 }, { id: 'LCB', label: 'CB', x: 28, y: 74 },
+    { id: 'CB', label: 'CB', x: 50, y: 76 }, { id: 'RCB', label: 'CB', x: 72, y: 74 }, { id: 'RWB', label: 'WB', x: 92, y: 70 },
     { id: 'LM', label: 'LM', x: 25, y: 50 }, { id: 'CM', label: 'CM', x: 50, y: 52 }, { id: 'RM', label: 'RM', x: 75, y: 50 },
     { id: 'ST1', label: 'ST', x: 36, y: 18 }, { id: 'ST2', label: 'ST', x: 64, y: 18 },
   ],
@@ -314,32 +316,32 @@ export default function FormationPage() {
     };
   }, [placePlayer, removeFromPitch]);
 
-  const posToCategory = (pos?: string): 'DF' | 'MF' | 'FW' => {
-    if (!pos) return 'FW';
-    if (['CB', 'LB', 'RB', 'WB'].includes(pos)) return 'DF';
-    if (['CDM', 'CM', 'LM', 'RM', 'CAM', 'AM'].includes(pos)) return 'MF';
-    return 'FW';
-  };
-
+  // 자동 배치: ① 주 포지션이 자리와 정확히 같은 선수 → ② 주 포지션 분류(DF/MF/FW)가 같은 선수
+  // → ③ 부 포지션 분류가 같은 선수 → ④ 남은 자리(GK 포함)에 남은 선수 순서로 채운다.
   const autoFormation = useCallback(() => {
     if (!isManager) return;
-    const newMap: Record<string, number> = {};
-    const byPos: Record<string, RosterItem[]> = { DF: [], MF: [], FW: [] };
-    players.forEach((p) => byPos[posToCategory(p.mainPosition)]?.push(p));
-
     const slotList = FORMATIONS[formation];
-    const defSlots = slotList.filter((s) => ['LB', 'CB', 'RB', 'LCB', 'RCB', 'LWB', 'RWB'].includes(s.label));
-    const midSlots = slotList.filter((s) => ['LM', 'CM', 'RM', 'CDM', 'CAM', 'CM1', 'CM2', 'CM3', 'CDM1', 'CDM2'].includes(s.label));
-    const fwdSlots = slotList.filter((s) => ['ST', 'LW', 'RW', 'ST1', 'ST2'].includes(s.label));
+    const newMap: Record<string, number> = {};
+    const used = new Set<number>();
 
-    [[defSlots, byPos.DF], [midSlots, byPos.MF], [fwdSlots, byPos.FW]].forEach(([ss, pp]) => {
-      const slotsArr = ss as SlotDef[];
-      const pArr = pp as RosterItem[];
-      slotsArr.forEach((slot, i) => {
-        if (pArr[i]) newMap[slot.id] = pArr[i].playerId;
-      });
-    });
+    const fill = (match: (slot: SlotDef, p: RosterItem) => boolean, includeGK: boolean) => {
+      for (const slot of slotList) {
+        if (newMap[slot.id] !== undefined) continue;
+        if (slot.label === GK && !includeGK) continue;
+        const p = players.find((pl) => !used.has(pl.playerId) && match(slot, pl));
+        if (!p) continue;
+        used.add(p.playerId);
+        newMap[slot.id] = p.playerId;
+      }
+    };
+
+    fill((slot, p) => p.mainPosition === slot.label, false);
+    fill((slot, p) => getPositionCategory(p.mainPosition) === getLineupCategory(slot.label), false);
+    fill((slot, p) => getPositionCategory(p.subPosition) === getLineupCategory(slot.label), false);
+    fill(() => true, true);
+
     setSlotAssignments(newMap);
+    setSelectedPlayerId(null);
     toast.success('포메이션이 자동 배치되었습니다');
   }, [formation, players, isManager]);
 

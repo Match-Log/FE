@@ -10,11 +10,13 @@ import { toast } from 'sonner';
 import { authApi } from '@/api/auth';
 import { loginSchema, type LoginFormData } from '@/schemas/auth';
 import { useAuthStore } from '@/stores/authStore';
+import { useTeamStore } from '@/stores/teamStore';
 import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuthStore();
+  const clearTeam = useTeamStore((s) => s.clear);
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
@@ -38,6 +40,8 @@ export default function LoginPage() {
       document.cookie = `accessToken=${accessToken}; path=/; max-age=1800; SameSite=Lax`;
 
       login(accessToken);
+      // 이전 계정의 팀/선수 정보가 남아 있지 않도록 비운다. 선수 정보는 팀 선택 화면에서 서버(/players/me) 기준으로 다시 채운다.
+      clearTeam();
       router.push('/team/select');
     } catch (err: unknown) {
       console.error('[Login] 실패:', err);

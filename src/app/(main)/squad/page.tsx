@@ -7,19 +7,19 @@ import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 import { cn } from '@/lib/utils';
 import type { RosterItem } from '@/types';
+import {
+  POSITION_CATEGORIES,
+  POSITION_CATEGORY_LABELS,
+  getPositionCategory,
+  type PositionCategory,
+} from '@/constants/position';
 
-type PositionCategory = 'DF' | 'MF' | 'FW';
 type PositionFilter = 'ALL' | PositionCategory;
-const POSITION_FILTERS: PositionFilter[] = ['ALL', 'DF', 'MF', 'FW'];
-const POSITION_LABELS: Record<string, string> = { DF: 'Defender', MF: 'Midfielder', FW: 'Forward' };
+const POSITION_FILTERS: PositionFilter[] = ['ALL', ...POSITION_CATEGORIES];
 
-function positionToCategory(pos?: string): PositionCategory | null {
-  if (!pos) return null;
-  if (['CB', 'LB', 'RB', 'WB'].includes(pos)) return 'DF';
-  if (['CDM', 'CM', 'LM', 'RM', 'CAM', 'AM'].includes(pos)) return 'MF';
-  if (['LW', 'RW', 'ST', 'CF'].includes(pos)) return 'FW';
-  return null;
-}
+// 포지션이 없는 선수도 목록에서 빠지지 않도록 별도 그룹으로 보여준다.
+type SquadGroup = PositionCategory | 'NONE';
+const GROUP_LABELS: Record<SquadGroup, string> = { ...POSITION_CATEGORY_LABELS, NONE: '포지션 미지정' };
 
 function getInitials(name: string) {
   return name.slice(0, 2);
@@ -39,21 +39,21 @@ export default function SquadPage() {
       .finally(() => setIsLoading(false));
   }, [teamId]);
 
+  const groupOf = (p: RosterItem): SquadGroup => getPositionCategory(p.mainPosition) ?? 'NONE';
+
   const filtered = filter === 'ALL'
     ? players
-    : players.filter((p) => positionToCategory(p.mainPosition) === filter);
+    : players.filter((p) => groupOf(p) === filter);
 
-  const counts = {
-    DF: players.filter((p) => positionToCategory(p.mainPosition) === 'DF').length,
-    MF: players.filter((p) => positionToCategory(p.mainPosition) === 'MF').length,
-    FW: players.filter((p) => positionToCategory(p.mainPosition) === 'FW').length,
-  };
+  const counts = Object.fromEntries(
+    POSITION_CATEGORIES.map((cat) => [cat, players.filter((p) => groupOf(p) === cat).length])
+  ) as Record<PositionCategory, number>;
 
-  const grouped = (['DF', 'MF', 'FW'] as const).reduce((acc, cat) => {
-    const group = filtered.filter((p) => positionToCategory(p.mainPosition) === cat);
-    if (group.length > 0) acc[cat] = group;
+  const grouped = ([...POSITION_CATEGORIES, 'NONE'] as SquadGroup[]).reduce((acc, group) => {
+    const members = filtered.filter((p) => groupOf(p) === group);
+    if (members.length > 0) acc.push([group, members]);
     return acc;
-  }, {} as Record<string, RosterItem[]>);
+  }, [] as [SquadGroup, RosterItem[]][]);
 
   return (
     <div className="min-h-screen bg-[#05060B] text-white">
@@ -84,7 +84,7 @@ export default function SquadPage() {
               <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Total</p>
             </div>
             <div className="w-px h-8 bg-white/10" />
-            {(['DF', 'MF', 'FW'] as const).map((pos) => (
+            {POSITION_CATEGORIES.map((pos) => (
               <div key={pos} className="text-center">
                 <p className="text-xl font-black italic text-zinc-200 mb-0.5">{counts[pos]}</p>
                 <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">{pos}</p>
@@ -118,10 +118,10 @@ export default function SquadPage() {
           </div>
         ) : (
           <div className="space-y-10 relative z-10">
-            {Object.entries(grouped).map(([pos, group]) => (
+            {grouped.map(([pos, group]) => (
               <div key={pos} className="space-y-5">
                 <span className="inline-block bg-[#111218] px-3 py-1 rounded-md text-[10px] font-black text-zinc-600 uppercase tracking-[0.15em]">
-                  {POSITION_LABELS[pos]}
+                  {GROUP_LABELS[pos]}
                 </span>
                 <div className="space-y-5">
                   {group.map((player) => (
@@ -144,12 +144,14 @@ export default function SquadPage() {
                               )}
                             </div>
                             <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
-                              #{player.number} · {player.mainPosition}
+                              {[player.number != null ? `#${player.number}` : null, player.mainPosition ?? '포지션 미지정']
+                                .filter(Boolean)
+                                .join(' · ')}
                             </p>
                           </div>
                         </div>
                         <span className="text-[11px] font-black text-zinc-800 uppercase tracking-widest italic">
-                          {player.mainPosition}
+                          {player.mainPosition ?? '-'}
                         </span>
                       </div>
                     </Link>

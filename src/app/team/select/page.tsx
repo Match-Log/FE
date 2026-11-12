@@ -24,7 +24,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { teamApi } from '@/api/team';
 import { authApi } from '@/api/auth';
-import { playerApi } from '@/api/player';
+import { useSyncMyPlayer } from '@/hooks/useSyncMyPlayer';
 import { joinTeamSchema, type JoinTeamFormData } from '@/schemas/team';
 import { useTeamStore } from '@/stores/teamStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -33,11 +33,10 @@ import GridBackground from '@/components/common/GridBackground';
 
 export default function TeamSelectPage() {
   const router = useRouter();
-  const { playerId, setTeam, setPlayerId, clear } = useTeamStore();
+  const { playerId, setTeam, clear } = useTeamStore();
   const { logout } = useAuthStore();
   const [teams, setTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCheckingPlayer, setIsCheckingPlayer] = useState(true);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -52,20 +51,8 @@ export default function TeamSelectPage() {
   } = useForm<JoinTeamFormData>({ resolver: zodResolver(joinTeamSchema) });
 
   // 선수 등록 여부는 서버(DB) 기준으로 확인한다. 브라우저 저장값은 다른 브라우저/재로그인 시 비어 있을 수 있음.
-  useEffect(() => {
-    playerApi
-      .getMyPlayer()
-      .then((res) => setPlayerId(res.data.playerId))
-      .catch((err: unknown) => {
-        const status =
-          err && typeof err === 'object' && 'response' in err
-            ? (err as { response?: { status?: number } }).response?.status
-            : undefined;
-        // 404 = 미등록. 그 외 오류(네트워크 등)는 기존 저장값을 유지한다.
-        if (status === 404) setPlayerId(null);
-      })
-      .finally(() => setIsCheckingPlayer(false));
-  }, [setPlayerId]);
+  const myPlayerStatus = useSyncMyPlayer();
+  const isCheckingPlayer = myPlayerStatus === 'checking';
 
   useEffect(() => {
     teamApi
@@ -76,7 +63,7 @@ export default function TeamSelectPage() {
   }, []);
 
   const handleSelectTeam = (team: Team) => {
-    setTeam(team.teamId, playerId ?? 0, team.role, team.name);
+    setTeam(team.teamId, playerId, team.role, team.name);
     router.push('/home');
   };
 
@@ -98,7 +85,7 @@ export default function TeamSelectPage() {
     try {
       const res = await teamApi.joinTeam(data);
       const team = res.data;
-      setTeam(team.teamId, team.playerId ?? playerId ?? 0, team.role as 'MANAGER' | 'PLAYER');
+      setTeam(team.teamId, team.playerId ?? playerId, team.role as 'MANAGER' | 'PLAYER');
       toast.success('팀에 합류했습니다!');
       setJoinDialogOpen(false);
       resetJoin();
