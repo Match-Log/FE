@@ -151,6 +151,15 @@
   background: linear-gradient(135deg, #00F5FF 0%, #7000FF 100%);
 }
 
+/* Toast 아이콘 색상 (앱 테마) */
+.ml-toast-error [data-icon] {
+  color: #fb7185; /* rose-400 */
+}
+
+.ml-toast-success [data-icon] {
+  color: #00F5FF; /* brand cyan */
+}
+
 .accent-gradient-text {
   background: linear-gradient(135deg, #00F5FF 0%, #7000FF 100%);
   -webkit-background-clip: text;
