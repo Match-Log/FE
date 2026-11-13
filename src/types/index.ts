@@ -104,21 +104,20 @@ export interface VoteStatusResponse {
   votes: VoteItem[];
 }
 
-// KickerAssignment - matches AssignKickerRequestDto / AssignKickerResponseDto
-export interface KickerAssignment {
-  isCaptain?: boolean;
-  isPkTaker?: boolean;
-  isFkRight?: boolean;
-  isFkLeft?: boolean;
-  isCkRight?: boolean;
-  isCkLeft?: boolean;
-  teamId?: number;
-  playerId?: number;
-  updatedAt?: string;
+// RoleAssignment - matches RoleAssignmentResponseDto (GET/PUT /api/v1/teams/{teamId}/role-assignment)
+// 팀 단위 주장·세트피스 전담 지정. 지정 안 된 역할은 null.
+export interface RoleSlot {
+  participationId: number;
+  playerId: number;
+  name: string;
 }
 
-// KickerRole - UI-only type for formation page specialist slots
-export type KickerRole = 'CAPTAIN' | 'PENALTY' | 'LEFT_CORNER' | 'RIGHT_CORNER' | 'LEFT_FK' | 'RIGHT_FK';
+export type SpecialistRole = 'captain' | 'pkTaker' | 'ckLeft' | 'ckRight' | 'fkLeft' | 'fkRight';
+
+export type RoleAssignment = { teamId: number; updatedAt?: string } & Record<SpecialistRole, RoleSlot | null>;
+
+// UpdateRoleAssignmentRequestDto. 전체 덮어쓰기라 null(또는 생략)이면 지정 해제된다.
+export type UpdateRoleAssignmentRequest = Partial<Record<`${SpecialistRole}ParticipationId`, number | null>>;
 
 // RosterItem - matches RosterItemResponseDto
 export interface RosterItem {

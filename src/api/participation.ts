@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { RosterItem, KickerAssignment, Position } from '@/types';
+import type { RosterItem, Position, RoleAssignment, UpdateRoleAssignmentRequest } from '@/types';
 
 export const participationApi = {
   getTeamPlayers: (teamId: number) =>
@@ -8,11 +8,12 @@ export const participationApi = {
   deletePlayer: (teamId: number, playerId: number) =>
     apiClient.delete(`/api/v1/teams/${teamId}/players/${playerId}`),
 
-  setKicker: (teamId: number, playerId: number, data: KickerAssignment) =>
-    apiClient.put<KickerAssignment>(`/api/v1/teams/${teamId}/players/${playerId}/kicker`, data),
+  getRoleAssignment: (teamId: number) =>
+    apiClient.get<RoleAssignment>(`/api/v1/teams/${teamId}/role-assignment`),
 
-  getKicker: (teamId: number, playerId: number) =>
-    apiClient.get<KickerAssignment>(`/api/v1/teams/${teamId}/players/${playerId}/kicker`),
+  // 매니저만 가능. 6개 역할을 한 번에 덮어쓴다.
+  updateRoleAssignment: (teamId: number, data: UpdateRoleAssignmentRequest) =>
+    apiClient.put<RoleAssignment>(`/api/v1/teams/${teamId}/role-assignment`, data),
 
   updatePlayer: (
     teamId: number,
