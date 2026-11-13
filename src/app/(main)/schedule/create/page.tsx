@@ -18,6 +18,7 @@ const createMatchSchema = z.object({
   matchTime: z.string().min(1, '시간을 선택해주세요'),
   homeAway: z.enum(['HOME', 'AWAY']),
   location: z.string().min(2, '장소를 입력해주세요'),
+  memo: z.string().max(500, '메모는 500자 이내로 입력해주세요').optional(),
 });
 
 type CreateMatchForm = z.infer<typeof createMatchSchema>;
@@ -51,6 +52,7 @@ export default function CreateMatchPage() {
         matchDate,
         homeAway: data.homeAway,
         location: data.location,
+        memo: data.memo || undefined,
       });
       toast.success('경기가 생성되었습니다');
       router.push('/schedule');
@@ -210,6 +212,26 @@ export default function CreateMatchPage() {
           </div>
           {errors.location && (
             <p className="text-red-400 text-[10px] font-bold">{errors.location.message}</p>
+          )}
+        </section>
+
+        {/* Memo */}
+        <section className="space-y-3">
+          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] block">
+            메모 (선택)
+          </label>
+          <textarea
+            {...register('memo')}
+            rows={3}
+            maxLength={500}
+            placeholder="경기 관련 메모 (최대 500자)"
+            className={cn(
+              'w-full bg-white/[0.03] border rounded-xl px-4 py-4 text-sm font-semibold placeholder-zinc-700 outline-none focus:border-[#00F5FF]/40 transition-colors resize-none',
+              errors.memo ? 'border-red-500/50' : 'border-white/5'
+            )}
+          />
+          {errors.memo && (
+            <p className="text-red-400 text-[10px] font-bold">{errors.memo.message}</p>
           )}
         </section>
 

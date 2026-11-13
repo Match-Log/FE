@@ -62,6 +62,7 @@ export interface Match {
   opponent: string;
   matchDate: string;
   location?: string;
+  memo?: string;
   homeAway: 'HOME' | 'AWAY';
   matchType: 'SOCCER' | 'FOOTBALL';
   scoreHome?: number;
@@ -78,6 +79,7 @@ export interface MatchListItem {
   opponent: string;
   matchDate: string;
   location?: string;
+  memo?: string;
   homeAway: 'HOME' | 'AWAY';
   matchType: 'SOCCER' | 'FOOTBALL';
   scoreHome?: number;
