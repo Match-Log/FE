@@ -8,12 +8,9 @@ import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
-import { cn } from '@/lib/utils';
+import { cn, getNameInitials } from '@/lib/utils';
 import type { Match, VoteItem } from '@/types';
 
-function getInitials(name: string) {
-  return name.slice(0, 2).toUpperCase();
-}
 
 function formatMatchDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -54,7 +51,7 @@ export default function MatchInfoPage() {
   const attendPct = total > 0 ? Math.round((attendees.length / total) * 100) : 0;
 
   const handleVote = async (status: 'ATTEND' | 'ABSENT') => {
-    if (!match || isVoting || match.isFinished) return;
+    if (!match || isVoting || match.finished) return;
     setIsVoting(true);
     try {
       await voteApi.vote(matchId, { status });
@@ -83,8 +80,8 @@ export default function MatchInfoPage() {
     );
   }
 
-  const isScheduled = !match.isFinished;
-  const isCompleted = match.isFinished;
+  const isScheduled = !match.finished;
+  const isCompleted = match.finished;
   const myScore = match.homeAway === 'HOME' ? match.scoreHome : match.scoreAway;
   const opponentScore = match.homeAway === 'HOME' ? match.scoreAway : match.scoreHome;
 
@@ -246,7 +243,7 @@ export default function MatchInfoPage() {
                   className="flex items-center gap-2 bg-[#00F5FF]/5 border border-[#00F5FF]/15 rounded-lg px-2.5 py-1.5"
                 >
                   <div className="w-5 h-5 rounded-full bg-[#00F5FF]/20 flex items-center justify-center text-[7px] font-black text-[#00F5FF]">
-                    {getInitials(v.name)}
+                    {getNameInitials(v.name)}
                   </div>
                   <span className="text-[10px] font-black text-white">{v.name}</span>
                 </div>
@@ -271,7 +268,7 @@ export default function MatchInfoPage() {
                   className="flex items-center gap-2 bg-purple-500/5 border border-purple-500/15 rounded-lg px-2.5 py-1.5"
                 >
                   <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center text-[7px] font-black text-purple-400">
-                    {getInitials(v.name)}
+                    {getNameInitials(v.name)}
                   </div>
                   <span className="text-[10px] font-black text-zinc-400">{v.name}</span>
                 </div>
@@ -296,7 +293,7 @@ export default function MatchInfoPage() {
                   className="flex items-center gap-2 bg-white/[0.02] border border-white/5 rounded-lg px-2.5 py-1.5"
                 >
                   <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[7px] font-black text-zinc-500">
-                    {getInitials(v.name)}
+                    {getNameInitials(v.name)}
                   </div>
                   <span className="text-[10px] font-black text-zinc-600">{v.name}</span>
                 </div>

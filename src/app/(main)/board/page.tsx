@@ -6,7 +6,7 @@ import { Pin, PenSquare } from 'lucide-react';
 import { boardApi } from '@/api/board';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
-import { cn } from '@/lib/utils';
+import { cn, getNameInitials } from '@/lib/utils';
 import type { BoardPost } from '@/types';
 
 function formatPostDate(dateStr: string) {
@@ -21,9 +21,6 @@ function formatPostDate(dateStr: string) {
   return new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric' }).format(d);
 }
 
-function getInitials(name: string) {
-  return name.slice(0, 2);
-}
 
 export default function BoardPage() {
   const { teamId, role } = useTeamStore();
@@ -38,8 +35,8 @@ export default function BoardPage() {
       .finally(() => setIsLoading(false));
   }, [teamId]);
 
-  const pinned = posts.filter((p) => p.isPinned === true);
-  const regular = posts.filter((p) => !p.isPinned);
+  const pinned = posts.filter((p) => p.pinned === true);
+  const regular = posts.filter((p) => !p.pinned);
 
   return (
     <div className="min-h-screen bg-[#05060B] text-white">
@@ -100,7 +97,7 @@ export default function BoardPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 rounded-full bg-[#00F5FF]/20 flex items-center justify-center text-[7px] font-black text-[#00F5FF]">
-                        {getInitials(post.playerName)}
+                        {getNameInitials(post.playerName)}
                       </div>
                       <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-tighter">{post.playerName}</span>
                     </div>
@@ -123,7 +120,7 @@ export default function BoardPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[7px] font-black text-zinc-500">
-                        {getInitials(post.playerName)}
+                        {getNameInitials(post.playerName)}
                       </div>
                       <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-tighter">{post.playerName}</span>
                     </div>

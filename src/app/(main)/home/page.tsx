@@ -3,14 +3,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Home as HomeIcon, Bell, Settings, ChevronRight, Users, Megaphone, History } from 'lucide-react';
+import { ChevronLeft, Bell, Settings, ChevronRight, Users, Megaphone, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
+import { participationApi } from '@/api/participation';
+import { boardApi } from '@/api/board';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
-import type { MatchListItem, VoteItem } from '@/types';
-import { cn } from '@/lib/utils';
+import type { MatchListItem, VoteItem, RosterItem, BoardPost } from '@/types';
+import { cn, getNameInitials } from '@/lib/utils';
 
 function getDaysUntil(dateStr: string): number {
   const matchDate = new Date(dateStr);
@@ -43,6 +45,15 @@ function getMatchResult(match: MatchListItem) {
   return { label: '무', color: 'text-zinc-500', myScore, opponentScore };
 }
 
+const SQUAD_PREVIEW_COUNT = 4;
+const MATCH_LIST_COUNT = 3;
+const NOTICE_PREVIEW_COUNT = 2;
+
+function formatNoticeDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export default function HomePage() {
   const router = useRouter();
   const { teamId, teamName, playerId, role } = useTeamStore();
@@ -51,6 +62,9 @@ export default function HomePage() {
   const [recentMatches, setRecentMatches] = useState<MatchListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
+  const [roster, setRoster] = useState<RosterItem[]>([]);
+  const [notices, setNotices] = useState<BoardPost[]>([]);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
 
   const userName =
     typeof window !== 'undefined' ? localStorage.getItem('userName') || '선수' : '선수';
@@ -61,15 +75,20 @@ export default function HomePage() {
     try {
       const matchesRes = await matchApi.getMatches(teamId);
       const all = matchesRes.data;
+      // 예정 = 아직 안 끝났고 오늘 이후인 경기. 날짜가 지났는데 결과를 안 넣은 경기는 지난 경기로 본다.
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const isUpcoming = (m: MatchListItem) => !m.finished && new Date(m.matchDate) >= todayStart;
       const scheduled = all
-        .filter((m) => !m.isFinished)
+        .filter(isUpcoming)
         .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
       const completed = all
-        .filter((m) => m.isFinished)
+        .filter((m) => !isUpcoming(m))
         .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime());
       const upcoming = scheduled[0] ?? null;
       setUpcomingMatch(upcoming);
-      setRecentMatches(completed.slice(0, 3));
+      // 경기 목록: 예정 경기(가까운 순) → 최근 지난 경기 순으로 최대 MATCH_LIST_COUNT개. 위 카드의 경기도 포함한다.
+      setRecentMatches([...scheduled, ...completed].slice(0, MATCH_LIST_COUNT));
       if (upcoming) {
         const votesRes = await voteApi.getVotes(upcoming.matchId);
         setVotes(votesRes.data.votes);
@@ -88,6 +107,32 @@ export default function HomePage() {
     }
     loadData();
   }, [teamId, loadData, router]);
+
+  // 선수단·공지 카드. 한쪽이 실패해도 다른 쪽은 보여준다.
+  useEffect(() => {
+    if (!teamId) return;
+    let cancelled = false;
+    setIsSummaryLoading(true);
+    Promise.allSettled([participationApi.getTeamPlayers(teamId), boardApi.getPosts(teamId)]).then(
+      ([rosterRes, postsRes]) => {
+        if (cancelled) return;
+        setRoster(rosterRes.status === 'fulfilled' ? rosterRes.value.data : []);
+        // 공지 = 고정(pinned)된 게시글. 서버가 고정글 → 최신순으로 정렬해서 내려준다.
+        setNotices(
+          postsRes.status === 'fulfilled'
+            ? postsRes.value.data.filter((p) => p.pinned === true).slice(0, NOTICE_PREVIEW_COUNT)
+            : []
+        );
+        setIsSummaryLoading(false);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId]);
+
+  const rosterPreview = roster.slice(0, SQUAD_PREVIEW_COUNT);
+  const rosterRest = roster.length - rosterPreview.length;
 
   const myVote = votes.find((v) => v.playerId === playerId);
   const attendCount = votes.filter((v) => v.status === 'ATTEND').length;
@@ -116,9 +161,13 @@ export default function HomePage() {
       {/* Header */}
       <header className="px-6 pt-10 pb-6 flex items-center justify-between sticky top-0 bg-[#05060B]/80 backdrop-blur-md z-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 flex items-center justify-center bg-[#111218] border border-white/5 rounded-xl">
-            <HomeIcon className="w-4 h-4 text-zinc-400" />
-          </div>
+          <Link
+            href="/team/select"
+            aria-label="팀 선택으로 돌아가기"
+            className="w-10 h-10 flex items-center justify-center bg-[#111218] border border-white/5 rounded-xl hover:border-[#00F5FF]/30 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4 text-zinc-400" />
+          </Link>
           <h1 className="text-xl font-black tracking-tight italic uppercase">{displayTeamName}</h1>
         </div>
         <div className="flex items-center gap-2">
@@ -268,7 +317,7 @@ export default function HomePage() {
 
           {recentMatches.length === 0 ? (
             <p className="text-center text-zinc-700 text-xs font-bold uppercase tracking-widest py-6">
-              완료된 경기가 없습니다
+              등록된 경기가 없습니다
             </p>
           ) : (
             <div className="space-y-8">
@@ -301,8 +350,15 @@ export default function HomePage() {
                               {result.label}
                             </span>
                           </>
-                        ) : (
+                        ) : match.finished ? (
                           <span className="text-zinc-600 text-sm font-black">— : —</span>
+                        ) : (
+                          <span className="text-[10px] font-black uppercase italic text-[#00F5FF]">
+                            {(() => {
+                              const d = getDaysUntil(match.matchDate);
+                              return d === 0 ? 'D-Day' : d > 0 ? `D-${d}` : '결과 미입력';
+                            })()}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -318,44 +374,85 @@ export default function HomePage() {
           {/* Squad Card */}
           <Link
             href="/squad"
-            className="p-6 space-y-6 border border-white/5 rounded-[2rem] cursor-pointer hover:border-[#00F5FF]/20 transition-all"
+            className="p-6 space-y-5 border border-white/5 rounded-[2rem] cursor-pointer hover:border-[#00F5FF]/20 transition-all min-w-0"
             style={{ background: 'rgba(18, 20, 32, 0.4)', backdropFilter: 'blur(20px)' }}
           >
-            <div className="flex items-center gap-2">
-              <Users className="w-3 h-3 text-zinc-600" />
-              <h3 className="text-[10px] font-black uppercase tracking-widest">선수단</h3>
-            </div>
-            <div className="flex -space-x-3 overflow-hidden">
-              {['DF', 'MF', 'FW'].map((pos, i) => (
-                <div
-                  key={i}
-                  className="w-10 h-10 rounded-full border-2 border-[#05060B] bg-zinc-900 flex items-center justify-center text-[8px] font-black text-zinc-500"
-                >
-                  {pos}
-                </div>
-              ))}
-              <div className="w-10 h-10 rounded-full border-2 border-[#05060B] bg-zinc-800 flex items-center justify-center text-[8px] font-black text-zinc-500">
-                ...
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Users className="w-3 h-3 text-zinc-600" />
+                <h3 className="text-[10px] font-black uppercase tracking-widest">선수단</h3>
               </div>
+              {!isSummaryLoading && (
+                <span className="text-[10px] font-black text-[#00F5FF]">{roster.length}명</span>
+              )}
             </div>
+
+            {isSummaryLoading ? (
+              <div className="flex -space-x-3">
+                {Array.from({ length: SQUAD_PREVIEW_COUNT }).map((_, i) => (
+                  <div key={i} className="w-10 h-10 rounded-full border-2 border-[#05060B] bg-zinc-900 animate-pulse" />
+                ))}
+              </div>
+            ) : roster.length === 0 ? (
+              <p className="text-zinc-700 text-[10px] font-bold uppercase tracking-widest">선수가 없습니다</p>
+            ) : (
+              <div className="flex -space-x-3 overflow-hidden">
+                  {rosterPreview.map((p) => (
+                    <div
+                      key={p.playerId}
+                      title={p.name}
+                      className="w-10 h-10 rounded-full border-2 border-[#05060B] bg-zinc-900 flex items-center justify-center text-[9px] font-black text-[#00F5FF]"
+                    >
+                      {getNameInitials(p.name)}
+                    </div>
+                  ))}
+                  {rosterRest > 0 && (
+                    <div className="w-10 h-10 rounded-full border-2 border-[#05060B] bg-zinc-800 flex items-center justify-center text-[9px] font-black text-zinc-400">
+                      +{rosterRest}
+                    </div>
+                  )}
+              </div>
+            )}
           </Link>
 
           {/* Notice Card */}
-          <Link
-            href="/board"
-            className="p-6 space-y-4 border border-white/5 rounded-[2rem] hover:border-[#00F5FF]/20 transition-all"
+          <div
+            className="p-6 space-y-4 border border-white/5 rounded-[2rem] hover:border-[#00F5FF]/20 transition-all min-w-0"
             style={{ background: 'rgba(18, 20, 32, 0.4)', backdropFilter: 'blur(20px)' }}
           >
-            <div className="flex items-center gap-2">
-              <Megaphone className="w-3 h-3 text-zinc-600" />
-              <h3 className="text-[10px] font-black uppercase tracking-widest">공지</h3>
-            </div>
-            <div className="space-y-3">
-              <p className="text-zinc-700 text-[10px] font-bold uppercase tracking-widest">
+            <Link href="/board" className="flex items-center justify-between gap-2 group">
+              <div className="flex items-center gap-2">
+                <Megaphone className="w-3 h-3 text-zinc-600" />
+                <h3 className="text-[10px] font-black uppercase tracking-widest">공지</h3>
+              </div>
+              <ChevronRight className="w-3 h-3 text-zinc-600 group-hover:text-[#00F5FF] transition-colors" />
+            </Link>
+            {isSummaryLoading ? (
+              <div className="space-y-3">
+                <div className="h-3 w-full bg-white/5 rounded animate-pulse" />
+                <div className="h-3 w-2/3 bg-white/5 rounded animate-pulse" />
+              </div>
+            ) : notices.length === 0 ? (
+              <Link href="/board" className="block text-zinc-700 text-[10px] font-bold uppercase tracking-widest">
                 공지사항이 없습니다
-              </p>
-            </div>
-          </Link>
+              </Link>
+            ) : (
+              <ul className="space-y-3">
+                {notices.map((n) => (
+                  <li key={n.boardId}>
+                    <Link href={`/board/${n.boardId}`} className="block group">
+                      <p className="text-[11px] font-black text-zinc-200 truncate group-hover:text-[#00F5FF] transition-colors">
+                        {n.title}
+                      </p>
+                      <p className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest mt-0.5">
+                        {formatNoticeDate(n.createdAt)} · {n.playerName}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </main>
     </div>

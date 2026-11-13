@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronLeft } from 'lucide-react';
@@ -9,16 +9,15 @@ import { toast } from 'sonner';
 import { playerApi } from '@/api/player';
 import { registerPlayerSchema, type RegisterPlayerFormData } from '@/schemas/player';
 import { useTeamStore } from '@/stores/teamStore';
+import { useSyncMyPlayer } from '@/hooks/useSyncMyPlayer';
 import GridBackground from '@/components/common/GridBackground';
 import { cn } from '@/lib/utils';
+import { POSITION_CATEGORIES, POSITIONS_BY_CATEGORY, POSITION_INFO } from '@/constants/position';
 
-const POSITION_GROUPS = [
-  { label: 'DF', positions: ['CB', 'LB', 'RB', 'WB'] },
-  { label: 'MF', positions: ['CDM', 'CM', 'LM', 'RM', 'CAM', 'AM'] },
-  { label: 'FW', positions: ['LW', 'RW', 'ST', 'CF'] },
-] as const;
-
-type Position = 'CB' | 'LB' | 'RB' | 'WB' | 'CDM' | 'CM' | 'LM' | 'RM' | 'CAM' | 'AM' | 'LW' | 'RW' | 'ST' | 'CF';
+const POSITION_GROUPS = POSITION_CATEGORIES.map((category) => ({
+  label: category,
+  positions: POSITIONS_BY_CATEGORY[category],
+}));
 
 const PREFERRED_FOOT = [
   { value: 'LEFT', label: '왼발' },
@@ -38,6 +37,15 @@ export default function RegisterPlayerPage() {
   const router = useRouter();
   const { setPlayerId } = useTeamStore();
   const [isLoading, setIsLoading] = useState(false);
+
+  // 이미 선수 등록을 마친 계정이면(서버 기준) 다시 등록하지 않도록 팀 선택 화면으로 돌려보낸다.
+  const myPlayerStatus = useSyncMyPlayer();
+  useEffect(() => {
+    if (myPlayerStatus === 'registered') {
+      toast.info('이미 선수 등록이 완료된 계정입니다');
+      router.replace('/team/select');
+    }
+  }, [myPlayerStatus, router]);
 
   const {
     register,
@@ -138,6 +146,7 @@ export default function RegisterPlayerPage() {
                           <button
                             key={pos}
                             type="button"
+                            title={POSITION_INFO[pos].description}
                             onClick={() => {
                               field.onChange(field.value === pos ? undefined : pos);
                               if (subPosition === pos) setValue('subPosition', undefined);
@@ -182,8 +191,9 @@ export default function RegisterPlayerPage() {
                         <button
                           key={pos}
                           type="button"
+                          title={POSITION_INFO[pos].description}
                           disabled={isMain}
-                          onClick={() => setValue('subPosition', isSelected ? undefined : pos as Position)}
+                          onClick={() => setValue('subPosition', isSelected ? undefined : pos)}
                           className={cn(
                             'px-3 py-2 border-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all',
                             isMain
@@ -326,7 +336,7 @@ export default function RegisterPlayerPage() {
           <div className="pt-6">
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || myPlayerStatus === 'checking' || myPlayerStatus === 'registered'}
               className="w-full accent-gradient text-black font-black py-5 shadow-[0_10px_30px_rgba(0,245,255,0.2)] active:scale-[0.98] transition-all text-sm uppercase tracking-[0.2em] disabled:opacity-50"
             >
               {isLoading ? '등록 중...' : '선수 등록하기'}

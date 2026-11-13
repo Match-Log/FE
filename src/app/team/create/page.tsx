@@ -34,7 +34,7 @@ export default function CreateTeamPage() {
     try {
       const res = await teamApi.createTeam(data);
       const team = res.data;
-      setTeam(team.teamId, playerId ?? 0, 'MANAGER', team.name);
+      setTeam(team.teamId, playerId, 'MANAGER', team.name);
       toast.success('팀이 생성되었습니다!');
       router.push('/home');
     } catch (err: unknown) {

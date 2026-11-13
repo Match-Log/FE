@@ -24,20 +24,20 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { teamApi } from '@/api/team';
 import { authApi } from '@/api/auth';
-import { playerApi } from '@/api/player';
+import { useSyncMyPlayer } from '@/hooks/useSyncMyPlayer';
 import { joinTeamSchema, type JoinTeamFormData } from '@/schemas/team';
 import { useTeamStore } from '@/stores/teamStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { Team } from '@/types';
 import GridBackground from '@/components/common/GridBackground';
+import { getNameInitials } from '@/lib/utils';
 
 export default function TeamSelectPage() {
   const router = useRouter();
-  const { playerId, setTeam, setPlayerId, clear } = useTeamStore();
+  const { playerId, setTeam, clear } = useTeamStore();
   const { logout } = useAuthStore();
   const [teams, setTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCheckingPlayer, setIsCheckingPlayer] = useState(true);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -52,20 +52,8 @@ export default function TeamSelectPage() {
   } = useForm<JoinTeamFormData>({ resolver: zodResolver(joinTeamSchema) });
 
   // 선수 등록 여부는 서버(DB) 기준으로 확인한다. 브라우저 저장값은 다른 브라우저/재로그인 시 비어 있을 수 있음.
-  useEffect(() => {
-    playerApi
-      .getMyPlayer()
-      .then((res) => setPlayerId(res.data.playerId))
-      .catch((err: unknown) => {
-        const status =
-          err && typeof err === 'object' && 'response' in err
-            ? (err as { response?: { status?: number } }).response?.status
-            : undefined;
-        // 404 = 미등록. 그 외 오류(네트워크 등)는 기존 저장값을 유지한다.
-        if (status === 404) setPlayerId(null);
-      })
-      .finally(() => setIsCheckingPlayer(false));
-  }, [setPlayerId]);
+  const myPlayerStatus = useSyncMyPlayer();
+  const isCheckingPlayer = myPlayerStatus === 'checking';
 
   useEffect(() => {
     teamApi
@@ -76,7 +64,7 @@ export default function TeamSelectPage() {
   }, []);
 
   const handleSelectTeam = (team: Team) => {
-    setTeam(team.teamId, playerId ?? 0, team.role, team.name);
+    setTeam(team.teamId, playerId, team.role, team.name);
     router.push('/home');
   };
 
@@ -98,7 +86,7 @@ export default function TeamSelectPage() {
     try {
       const res = await teamApi.joinTeam(data);
       const team = res.data;
-      setTeam(team.teamId, team.playerId ?? playerId ?? 0, team.role as 'MANAGER' | 'PLAYER');
+      setTeam(team.teamId, team.playerId ?? playerId, team.role as 'MANAGER' | 'PLAYER');
       toast.success('팀에 합류했습니다!');
       setJoinDialogOpen(false);
       resetJoin();
@@ -114,7 +102,7 @@ export default function TeamSelectPage() {
     }
   };
 
-  const nameInitials = userName.slice(0, 2);
+  const nameInitials = getNameInitials(userName);
   const isPlayerRegistered = playerId !== null && playerId !== 0;
 
   return (
@@ -127,8 +115,21 @@ export default function TeamSelectPage() {
             Match<span className="text-[#00F5FF]">Log</span>
           </span>
         </div>
-        <div className="w-10 h-10 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden">
-          <span className="text-[10px] font-black text-[#00F5FF]">{nameInitials}</span>
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden">
+            <span className="text-[10px] font-black text-[#00F5FF]">{nameInitials}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            aria-label="로그아웃"
+            className="h-10 px-3 rounded-xl bg-zinc-900 border border-white/10 flex items-center gap-1.5 hover:border-rose-500/40 hover:bg-rose-500/5 transition-colors group"
+          >
+            <LogOut className="w-4 h-4 text-rose-500/60 group-hover:text-rose-500" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-rose-500/70 group-hover:text-rose-500">
+              로그아웃
+            </span>
+          </button>
         </div>
       </nav>
 

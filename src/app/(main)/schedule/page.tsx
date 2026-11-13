@@ -91,11 +91,11 @@ export default function SchedulePage() {
   const todayKey = toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
 
   const upcomingMatches = matches
-    .filter((m) => !m.isFinished)
+    .filter((m) => !m.finished)
     .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
 
   const pastMatches = matches
-    .filter((m) => m.isFinished)
+    .filter((m) => m.finished)
     .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime());
 
   const handleDayClick = (dateKey: string) => {
@@ -161,8 +161,8 @@ export default function SchedulePage() {
             {calendarCells.map((cell, i) => {
               const hasMatch = matchByDate.has(cell.dateKey);
               const matchesOnDay = matchByDate.get(cell.dateKey) ?? [];
-              const hasScheduled = matchesOnDay.some((m) => !m.isFinished);
-              const hasPast = matchesOnDay.some((m) => m.isFinished);
+              const hasScheduled = matchesOnDay.some((m) => !m.finished);
+              const hasPast = matchesOnDay.some((m) => m.finished);
               const isToday = cell.dateKey === todayKey;
 
               return (
