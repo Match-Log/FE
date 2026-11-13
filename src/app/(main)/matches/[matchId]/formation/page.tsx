@@ -9,7 +9,7 @@ import { participationApi } from '@/api/participation';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 import { cn, getNameInitials } from '@/lib/utils';
-import type { RosterItem, KickerRole, KickerAssignment, LineupSpot } from '@/types';
+import type { RosterItem, LineupSpot, SpecialistRole } from '@/types';
 import { getLineupCategory, getPositionCategory, type LineupPosition } from '@/constants/position';
 
 // ── Formation definitions ──────────────────────────────────────────────────
@@ -70,13 +70,15 @@ const FORMATIONS: Record<FormationName, SlotDef[]> = {
 
 const FORMATION_NAMES = Object.keys(FORMATIONS) as FormationName[];
 
+// 주장·세트피스 전담은 팀 단위 설정(GET/PUT /teams/{teamId}/role-assignment)이다. 여기 state는 playerId로 다룬다.
+type KickerRole = SpecialistRole;
 const KICKER_ROLES: { role: KickerRole; label: string; color: string; bg: string }[] = [
-  { role: 'CAPTAIN', label: 'Captain', color: 'text-amber-500', bg: 'bg-amber-500/10 border-amber-500/20' },
-  { role: 'PENALTY', label: 'Penalty Kick', color: 'text-rose-500', bg: 'bg-rose-500/10 border-rose-500/20' },
-  { role: 'LEFT_CORNER', label: 'Left Corner', color: 'text-[#00F5FF]', bg: 'bg-cyan-400/10 border-cyan-400/20' },
-  { role: 'RIGHT_CORNER', label: 'Right Corner', color: 'text-[#00F5FF]', bg: 'bg-cyan-400/10 border-cyan-400/20' },
-  { role: 'LEFT_FK', label: 'Left Free Kick', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
-  { role: 'RIGHT_FK', label: 'Right Free Kick', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+  { role: 'captain', label: 'Captain', color: 'text-amber-500', bg: 'bg-amber-500/10 border-amber-500/20' },
+  { role: 'pkTaker', label: 'Penalty Kick', color: 'text-rose-500', bg: 'bg-rose-500/10 border-rose-500/20' },
+  { role: 'ckLeft', label: 'Left Corner', color: 'text-[#00F5FF]', bg: 'bg-cyan-400/10 border-cyan-400/20' },
+  { role: 'ckRight', label: 'Right Corner', color: 'text-[#00F5FF]', bg: 'bg-cyan-400/10 border-cyan-400/20' },
+  { role: 'fkLeft', label: 'Left Free Kick', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+  { role: 'fkRight', label: 'Right Free Kick', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
 ];
 
 
@@ -155,7 +157,7 @@ export default function FormationPage() {
 
   const [players, setPlayers] = useState<RosterItem[]>([]);
   const [specialists, setSpecialists] = useState<Record<KickerRole, number | null>>({
-    CAPTAIN: null, PENALTY: null, LEFT_CORNER: null, RIGHT_CORNER: null, LEFT_FK: null, RIGHT_FK: null,
+    captain: null, pkTaker: null, ckLeft: null, ckRight: null, fkLeft: null, fkRight: null,
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -163,6 +165,20 @@ export default function FormationPage() {
   useEffect(() => {
     if (!teamId) return;
     participationApi.getTeamPlayers(teamId).then((r) => setPlayers(r.data)).catch(() => {});
+    participationApi
+      .getRoleAssignment(teamId)
+      .then((r) => {
+        const a = r.data;
+        setSpecialists({
+          captain: a.captain?.playerId ?? null,
+          pkTaker: a.pkTaker?.playerId ?? null,
+          ckLeft: a.ckLeft?.playerId ?? null,
+          ckRight: a.ckRight?.playerId ?? null,
+          fkLeft: a.fkLeft?.playerId ?? null,
+          fkRight: a.fkRight?.playerId ?? null,
+        });
+      })
+      .catch(() => {});
   }, [teamId]);
 
   // Load lineup for the current quarter
@@ -358,26 +374,20 @@ export default function FormationPage() {
     }
   };
 
-  const roleToAssignment = (role: KickerRole): KickerAssignment => {
-    switch (role) {
-      case 'CAPTAIN':      return { isCaptain: true };
-      case 'PENALTY':      return { isPkTaker: true };
-      case 'LEFT_CORNER':  return { isCkLeft: true };
-      case 'RIGHT_CORNER': return { isCkRight: true };
-      case 'LEFT_FK':      return { isFkLeft: true };
-      case 'RIGHT_FK':     return { isFkRight: true };
-    }
-  };
-
   const saveSpecialists = async () => {
     if (!isManager || !teamId) return;
     setIsSaving(true);
     try {
-      await Promise.all(
-        (Object.entries(specialists) as [KickerRole, number | null][])
-          .filter(([, pid]) => pid !== null)
-          .map(([role, pid]) => participationApi.setKicker(teamId, pid!, roleToAssignment(role)))
-      );
+      const toParticipationId = (pid: number | null) =>
+        pid == null ? null : players.find((p) => p.playerId === pid)?.participationId ?? null;
+      await participationApi.updateRoleAssignment(teamId, {
+        captainParticipationId: toParticipationId(specialists.captain),
+        pkTakerParticipationId: toParticipationId(specialists.pkTaker),
+        ckLeftParticipationId: toParticipationId(specialists.ckLeft),
+        ckRightParticipationId: toParticipationId(specialists.ckRight),
+        fkLeftParticipationId: toParticipationId(specialists.fkLeft),
+        fkRightParticipationId: toParticipationId(specialists.fkRight),
+      });
       toast.success('스페셜리스트가 저장되었습니다');
     } catch {
       toast.error('저장에 실패했습니다');
@@ -640,7 +650,7 @@ export default function FormationPage() {
               <div key={role} className={cn('p-4 rounded-2xl border bg-zinc-900/40 flex items-center gap-4', bg)}>
                 <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center border', bg, 'shrink-0')}>
                   <span className={cn('text-xs font-black', color)}>
-                    {role === 'CAPTAIN' ? 'C' : 'PK'}
+                    {role === 'captain' ? 'C' : 'PK'}
                   </span>
                 </div>
                 <div className="flex-1">
@@ -673,7 +683,7 @@ export default function FormationPage() {
                 <div key={role} className={cn('p-4 rounded-2xl border bg-zinc-900/40', bg)}>
                   <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center border mb-3', bg)}>
                     <span className={cn('text-[9px] font-black', color)}>
-                      {role === 'LEFT_CORNER' ? 'L' : 'R'}
+                      {role === 'ckLeft' ? 'L' : 'R'}
                     </span>
                   </div>
                   <p className="text-[7px] font-black text-zinc-600 uppercase tracking-widest mb-1">{label}</p>

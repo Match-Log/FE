@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Bell, Settings, ChevronRight, Users, Megaphone, History } from 'lucide-react';
@@ -48,6 +48,7 @@ function getMatchResult(match: MatchListItem) {
 const SQUAD_PREVIEW_COUNT = 4;
 const MATCH_LIST_COUNT = 3;
 const NOTICE_PREVIEW_COUNT = 2;
+const SWIPE_THRESHOLD = 50;
 
 function formatNoticeDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -57,8 +58,11 @@ function formatNoticeDate(dateStr: string) {
 export default function HomePage() {
   const router = useRouter();
   const { teamId, teamName, playerId, role } = useTeamStore();
-  const [upcomingMatch, setUpcomingMatch] = useState<MatchListItem | null>(null);
-  const [votes, setVotes] = useState<VoteItem[]>([]);
+  // 예정 경기(가까운 순). 위 카드에서 좌우로 넘겨 가며 투표한다.
+  const [scheduledMatches, setScheduledMatches] = useState<MatchListItem[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  // 경기별 투표 현황. 넘길 때마다 다시 불러오고, 그동안은 이전 값을 보여준다.
+  const [votesByMatch, setVotesByMatch] = useState<Record<number, VoteItem[]>>({});
   const [recentMatches, setRecentMatches] = useState<MatchListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
@@ -85,14 +89,10 @@ export default function HomePage() {
       const completed = all
         .filter((m) => !isUpcoming(m))
         .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime());
-      const upcoming = scheduled[0] ?? null;
-      setUpcomingMatch(upcoming);
+      setScheduledMatches(scheduled);
+      setActiveIndex(0);
       // 경기 목록: 예정 경기(가까운 순) → 최근 지난 경기 순으로 최대 MATCH_LIST_COUNT개. 위 카드의 경기도 포함한다.
       setRecentMatches([...scheduled, ...completed].slice(0, MATCH_LIST_COUNT));
-      if (upcoming) {
-        const votesRes = await voteApi.getVotes(upcoming.matchId);
-        setVotes(votesRes.data.votes);
-      }
     } catch {
       // silent fail: show empty states
     } finally {
@@ -131,6 +131,45 @@ export default function HomePage() {
     };
   }, [teamId]);
 
+  const upcomingMatch = scheduledMatches[activeIndex] ?? null;
+  const activeMatchId = upcomingMatch?.matchId ?? null;
+  const votes = activeMatchId != null ? votesByMatch[activeMatchId] ?? [] : [];
+  const hasPrev = activeIndex > 0;
+  const hasNext = activeIndex < scheduledMatches.length - 1;
+
+  const loadVotes = useCallback(async (matchId: number) => {
+    const res = await voteApi.getVotes(matchId);
+    setVotesByMatch((prev) => ({ ...prev, [matchId]: res.data.votes }));
+  }, []);
+
+  useEffect(() => {
+    if (activeMatchId == null) return;
+    loadVotes(activeMatchId).catch(() => {
+      // silent fail: 이전 값(없으면 빈 목록) 유지
+    });
+  }, [activeMatchId, loadVotes]);
+
+  const goPrev = () => setActiveIndex((i) => Math.max(0, i - 1));
+  const goNext = () => setActiveIndex((i) => Math.min(scheduledMatches.length - 1, i + 1));
+
+  // 모바일 좌우 스와이프. 세로 스크롤과 구분하려고 가로 이동이 더 클 때만 넘긴다.
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start || scheduledMatches.length < 2) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) goNext();
+    else goPrev();
+  };
+
   const rosterPreview = roster.slice(0, SQUAD_PREVIEW_COUNT);
   const rosterRest = roster.length - rosterPreview.length;
 
@@ -145,8 +184,7 @@ export default function HomePage() {
     setIsVoting(true);
     try {
       await voteApi.vote(upcomingMatch.matchId, { status: nextStatus });
-      const votesRes = await voteApi.getVotes(upcomingMatch.matchId);
-      setVotes(votesRes.data.votes);
+      await loadVotes(upcomingMatch.matchId);
     } catch {
       toast.error('투표에 실패했습니다');
     } finally {
@@ -200,9 +238,34 @@ export default function HomePage() {
 
         {/* Upcoming Match Card */}
         <section
-          className="p-8 border border-[#00F5FF]/10 rounded-[2rem]"
+          className="relative p-8 border border-[#00F5FF]/10 rounded-[2rem]"
           style={{ background: 'rgba(18, 20, 32, 0.4)', backdropFilter: 'blur(20px)' }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         >
+          {/* 예정 경기가 여러 개면 좌우 버튼으로 넘긴다 */}
+          {!isLoading && scheduledMatches.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={goPrev}
+                disabled={!hasPrev}
+                aria-label="이전 경기"
+                className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-7 h-12 flex items-center justify-center rounded-xl text-zinc-400 hover:text-[#00F5FF] disabled:opacity-0 disabled:pointer-events-none transition-all"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                disabled={!hasNext}
+                aria-label="다음 경기"
+                className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-7 h-12 flex items-center justify-center rounded-xl text-zinc-400 hover:text-[#00F5FF] disabled:opacity-0 disabled:pointer-events-none transition-all"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </>
+          )}
           {isLoading ? (
             <div className="h-48 flex items-center justify-center">
               <div className="w-6 h-6 border-2 border-[#00F5FF]/30 border-t-[#00F5FF] rounded-full animate-spin" />
@@ -221,7 +284,7 @@ export default function HomePage() {
               )}
             </div>
           ) : (
-            <>
+            <div key={upcomingMatch.matchId} className="animate-in fade-in duration-300">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <span className="text-[11px] font-black text-[#00F5FF] italic uppercase">
@@ -232,6 +295,11 @@ export default function HomePage() {
                     {formatUpcomingDate(upcomingMatch.matchDate)}
                   </span>
                 </div>
+                {scheduledMatches.length > 1 && (
+                  <span className="text-[10px] font-black text-zinc-600 tracking-widest">
+                    {activeIndex + 1} / {scheduledMatches.length}
+                  </span>
+                )}
               </div>
 
               <Link href={`/matches/${upcomingMatch.matchId}`}>
@@ -294,7 +362,24 @@ export default function HomePage() {
                   <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Absent</p>
                 </div>
               </div>
-            </>
+
+              {scheduledMatches.length > 1 && (
+                <div className="flex items-center justify-center gap-1.5 mt-8">
+                  {scheduledMatches.map((m, i) => (
+                    <button
+                      key={m.matchId}
+                      type="button"
+                      onClick={() => setActiveIndex(i)}
+                      aria-label={`${i + 1}번째 경기 보기`}
+                      className={cn(
+                        'h-1.5 rounded-full transition-all',
+                        i === activeIndex ? 'w-5 bg-[#00F5FF]' : 'w-1.5 bg-zinc-700'
+                      )}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </section>
 
