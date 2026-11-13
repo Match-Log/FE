@@ -21,3 +21,10 @@ export function removeAccessToken() {
   localStorage.removeItem(TOKEN_ISSUED_AT_KEY);
   document.cookie = 'accessToken=; path=/; max-age=0; SameSite=Lax';
 }
+
+// 로그인/소셜로그인 응답에서 accessToken 외 부가 정보(refreshToken, userName)를 저장한다.
+// accessToken 자체와 쿠키는 authStore.login()/setAccessToken()이 처리하므로 여기서는 다루지 않는다.
+export function persistAuthSession(data: { refreshToken: string; name: string }) {
+  localStorage.setItem('refreshToken', data.refreshToken);
+  localStorage.setItem('userName', data.name);
+}

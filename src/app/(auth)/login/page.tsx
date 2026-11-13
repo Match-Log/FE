@@ -12,6 +12,8 @@ import { loginSchema, type LoginFormData } from '@/schemas/auth';
 import { useAuthStore } from '@/stores/authStore';
 import { useTeamStore } from '@/stores/teamStore';
 import { cn } from '@/lib/utils';
+import { persistAuthSession } from '@/lib/auth';
+import { buildOAuthAuthorizeUrl, type OAuthProvider } from '@/lib/oauth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,14 +34,9 @@ export default function LoginPage() {
     try {
       const res = await authApi.login(data);
       console.log('[Login] 성공:', res.data);
-      const { accessToken, refreshToken, name } = res.data;
 
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('userName', name);
-      document.cookie = `accessToken=${accessToken}; path=/; max-age=1800; SameSite=Lax`;
-
-      login(accessToken);
+      persistAuthSession(res.data);
+      login(res.data.accessToken);
       // 이전 계정의 팀/선수 정보가 남아 있지 않도록 비운다. 선수 정보는 팀 선택 화면에서 서버(/players/me) 기준으로 다시 채운다.
       clearTeam();
       router.push('/team/select');
@@ -52,6 +49,16 @@ export default function LoginPage() {
       toast.error(message || '로그인에 실패했습니다');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOAuth = (provider: OAuthProvider) => {
+    try {
+      // 전체 페이지 리다이렉트: provider 동의 화면 → /auth/callback/{provider}로 복귀
+      window.location.href = buildOAuthAuthorizeUrl(provider);
+    } catch (err) {
+      console.error('[OAuth] authorize URL 생성 실패:', err);
+      toast.error('소셜 로그인 설정이 올바르지 않습니다');
     }
   };
 
@@ -169,6 +176,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-2 gap-4">
             <button
               type="button"
+              onClick={() => handleOAuth('google')}
               className="flex items-center justify-center gap-2 bg-white text-black py-4 text-[10px] font-black uppercase tracking-widest"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
@@ -193,6 +201,7 @@ export default function LoginPage() {
             </button>
             <button
               type="button"
+              onClick={() => handleOAuth('kakao')}
               className="flex items-center justify-center gap-2 bg-[#FAE100] text-black py-4 text-[10px] font-black uppercase tracking-widest"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
