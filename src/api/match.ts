@@ -15,6 +15,7 @@ export const matchApi = {
       matchDate: string;
       homeAway: 'HOME' | 'AWAY';
       location: string;
+      memo?: string;
     }
   ) => apiClient.post<Match>(`/api/v1/teams/${teamId}/matches`, data),
 
@@ -27,6 +28,7 @@ export const matchApi = {
       opponent?: string;
       matchDate?: string;
       location?: string;
+      memo?: string;
       homeAway?: 'HOME' | 'AWAY';
       matchType?: 'SOCCER' | 'FOOTBALL';
       scoreHome?: number;

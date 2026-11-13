@@ -9,12 +9,6 @@ import { cn } from '@/lib/utils';
 import { useTeamStore } from '@/stores/teamStore';
 import type { Match } from '@/types';
 
-const TABS = [
-  { label: 'Information', path: '' },
-  { label: 'Formation', path: '/formation' },
-  { label: 'Feedback', path: '/feedback' },
-];
-
 export default function MatchLayout({ children }: { children: React.ReactNode }) {
   const params = useParams<{ matchId: string }>();
   const pathname = usePathname();
@@ -24,6 +18,12 @@ export default function MatchLayout({ children }: { children: React.ReactNode })
 
   const matchId = Number(params.matchId);
   const base = `/matches/${matchId}`;
+
+  const TABS = [
+    { label: 'Information', path: '' },
+    { label: 'Formation', path: '/formation' },
+    { label: match?.finished ? 'Feedback' : 'Tactic', path: '/feedback' },
+  ];
 
   useEffect(() => {
     if (!matchId) return;

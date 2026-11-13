@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { MapPin, Clock, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
+import { MapPin, CheckCircle2, XCircle, HelpCircle, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
@@ -12,17 +12,23 @@ import { cn, getNameInitials } from '@/lib/utils';
 import type { Match, VoteItem } from '@/types';
 
 
-function formatMatchDate(dateStr: string) {
+function formatMatchDay(dateStr: string) {
   const d = new Date(dateStr);
   const date = new Intl.DateTimeFormat('ko-KR', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-    weekday: 'short',
   }).format(d);
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${date} ${hh}:${mm}`;
+  const weekday = new Intl.DateTimeFormat('ko-KR', { weekday: 'short' }).format(d);
+  return `${date} (${weekday})`;
+}
+
+function formatMatchTime(dateStr: string) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(new Date(dateStr));
 }
 
 export default function MatchInfoPage() {
@@ -34,6 +40,7 @@ export default function MatchInfoPage() {
   const [votes, setVotes] = useState<VoteItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
+  const [showPending, setShowPending] = useState(false);
 
   useEffect(() => {
     if (!matchId) return;
@@ -152,15 +159,34 @@ export default function MatchInfoPage() {
         )}
 
         {/* Details */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 text-xs text-zinc-400">
-            <Clock className="w-4 h-4 text-zinc-600 flex-shrink-0" />
-            <span className="font-semibold">{formatMatchDate(match.matchDate)}</span>
+        <div className="divide-y divide-white/5 border-t border-white/5">
+          <div className="flex items-start justify-between gap-4 py-4">
+            <span className="text-sm font-bold text-zinc-500 flex-shrink-0">일시</span>
+            <div className="text-right">
+              <p className="text-base font-black text-white">{formatMatchDay(match.matchDate)}</p>
+              <p className="text-sm font-bold text-zinc-500 mt-1">{formatMatchTime(match.matchDate)}</p>
+            </div>
           </div>
-          <div className="flex items-start gap-3 text-xs text-zinc-400">
-            <MapPin className="w-4 h-4 text-zinc-600 flex-shrink-0 mt-0.5" />
-            <span className="font-semibold">{match.location}</span>
+          <div className="flex items-start justify-between gap-4 py-4">
+            <span className="text-sm font-bold text-zinc-500 flex-shrink-0">경기 방식</span>
+            <p className="text-base font-black text-white text-right">
+              {match.matchType === 'SOCCER' ? '축구' : '풋살'}
+            </p>
           </div>
+          {match.location && (
+            <div className="flex items-start justify-between gap-4 py-4">
+              <span className="text-sm font-bold text-zinc-500 flex-shrink-0">장소</span>
+              <p className="text-base font-black text-white text-right">{match.location}</p>
+            </div>
+          )}
+          {match.memo && (
+            <div className="flex items-start justify-between gap-4 py-4">
+              <span className="text-sm font-bold text-zinc-500 flex-shrink-0">메모</span>
+              <p className="text-base font-black text-white text-right whitespace-pre-wrap">
+                {match.memo}
+              </p>
+            </div>
+          )}
         </div>
 
       </section>
@@ -281,12 +307,22 @@ export default function MatchInfoPage() {
         {/* Pending list */}
         {pending.length > 0 && (
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => setShowPending((v) => !v)}
+              className="flex items-center gap-2 mb-3 w-full"
+            >
               <HelpCircle className="w-3.5 h-3.5 text-zinc-600" />
               <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                미정 {pending.length}
+                미응답 {pending.length}
               </span>
-            </div>
+              <ChevronDown
+                className={cn(
+                  'w-3.5 h-3.5 text-zinc-600 transition-transform',
+                  showPending && 'rotate-180'
+                )}
+              />
+            </button>
+            {showPending && (
             <div className="flex flex-wrap gap-2">
               {pending.map((v) => (
                 <div
@@ -300,6 +336,7 @@ export default function MatchInfoPage() {
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
       </section>

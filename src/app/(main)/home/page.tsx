@@ -46,7 +46,7 @@ function getMatchResult(match: MatchListItem) {
 }
 
 const SQUAD_PREVIEW_COUNT = 4;
-const MATCH_LIST_COUNT = 3;
+const HOME_MATCH_PER_GROUP = 2;
 const NOTICE_PREVIEW_COUNT = 2;
 const SWIPE_THRESHOLD = 50;
 
@@ -63,7 +63,7 @@ export default function HomePage() {
   const [activeIndex, setActiveIndex] = useState(0);
   // 경기별 투표 현황. 넘길 때마다 다시 불러오고, 그동안은 이전 값을 보여준다.
   const [votesByMatch, setVotesByMatch] = useState<Record<number, VoteItem[]>>({});
-  const [recentMatches, setRecentMatches] = useState<MatchListItem[]>([]);
+  const [pastMatches, setPastMatches] = useState<MatchListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
   const [roster, setRoster] = useState<RosterItem[]>([]);
@@ -91,8 +91,8 @@ export default function HomePage() {
         .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime());
       setScheduledMatches(scheduled);
       setActiveIndex(0);
-      // 경기 목록: 예정 경기(가까운 순) → 최근 지난 경기 순으로 최대 MATCH_LIST_COUNT개. 위 카드의 경기도 포함한다.
-      setRecentMatches([...scheduled, ...completed].slice(0, MATCH_LIST_COUNT));
+      // 경기 목록 '지난 경기' 그룹: 최근 지난 경기 최대 HOME_MATCH_PER_GROUP개.
+      setPastMatches(completed.slice(0, HOME_MATCH_PER_GROUP));
     } catch {
       // silent fail: show empty states
     } finally {
@@ -172,6 +172,51 @@ export default function HomePage() {
 
   const rosterPreview = roster.slice(0, SQUAD_PREVIEW_COUNT);
   const rosterRest = roster.length - rosterPreview.length;
+
+  const renderMatchRow = (match: MatchListItem) => {
+    const result = getMatchResult(match);
+    return (
+      <Link key={match.matchId} href={`/matches/${match.matchId}`}>
+        <div className="flex items-center justify-between hover:opacity-80 transition-opacity">
+          <div>
+            <h4 className="text-base font-black uppercase tracking-tight">
+              vs {match.opponent}
+            </h4>
+            <p className="text-[10px] font-bold text-zinc-600 mt-1 uppercase tracking-widest italic">
+              {formatRecentDate(match.matchDate)}{' '}
+              {match.matchType === 'SOCCER' ? '축구' : '풋살'}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {result ? (
+              <>
+                <span
+                  className={cn(
+                    'text-xl font-black italic',
+                    result.label === '무' ? 'text-zinc-600' : 'text-white'
+                  )}
+                >
+                  {result.myScore} : {result.opponentScore}
+                </span>
+                <span className={cn('text-[10px] font-black uppercase italic', result.color)}>
+                  {result.label}
+                </span>
+              </>
+            ) : match.finished ? (
+              <span className="text-zinc-600 text-sm font-black">— : —</span>
+            ) : (
+              <span className="text-[10px] font-black uppercase italic text-[#00F5FF]">
+                {(() => {
+                  const d = getDaysUntil(match.matchDate);
+                  return d === 0 ? 'D-Day' : d > 0 ? `D-${d}` : '결과 미입력';
+                })()}
+              </span>
+            )}
+          </div>
+        </div>
+      </Link>
+    );
+  };
 
   const myVote = votes.find((v) => v.playerId === playerId);
   const attendCount = votes.filter((v) => v.status === 'ATTEND').length;
@@ -401,57 +446,33 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {recentMatches.length === 0 ? (
+          {scheduledMatches.length === 0 && pastMatches.length === 0 ? (
             <p className="text-center text-zinc-700 text-xs font-bold uppercase tracking-widest py-6">
               등록된 경기가 없습니다
             </p>
           ) : (
-            <div className="space-y-8">
-              {recentMatches.map((match) => {
-                const result = getMatchResult(match);
-                return (
-                  <Link key={match.matchId} href={`/matches/${match.matchId}`}>
-                    <div className="flex items-center justify-between hover:opacity-80 transition-opacity">
-                      <div>
-                        <h4 className="text-base font-black uppercase tracking-tight">
-                          vs {match.opponent}
-                        </h4>
-                        <p className="text-[10px] font-bold text-zinc-600 mt-1 uppercase tracking-widest italic">
-                          {formatRecentDate(match.matchDate)}{' '}
-                          {match.matchType === 'SOCCER' ? '축구' : '풋살'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {result ? (
-                          <>
-                            <span
-                              className={cn(
-                                'text-xl font-black italic',
-                                result.label === '무' ? 'text-zinc-600' : 'text-white'
-                              )}
-                            >
-                              {result.myScore} : {result.opponentScore}
-                            </span>
-                            <span className={cn('text-[10px] font-black uppercase italic', result.color)}>
-                              {result.label}
-                            </span>
-                          </>
-                        ) : match.finished ? (
-                          <span className="text-zinc-600 text-sm font-black">— : —</span>
-                        ) : (
-                          <span className="text-[10px] font-black uppercase italic text-[#00F5FF]">
-                            {(() => {
-                              const d = getDaysUntil(match.matchDate);
-                              return d === 0 ? 'D-Day' : d > 0 ? `D-${d}` : '결과 미입력';
-                            })()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+            <>
+              {scheduledMatches.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-5">
+                    예정 경기
+                  </p>
+                  <div className="space-y-8">{scheduledMatches.slice(0, HOME_MATCH_PER_GROUP).map(renderMatchRow)}</div>
+                </div>
+              )}
+              {pastMatches.length > 0 && (
+                <div
+                  className={cn(
+                    scheduledMatches.length > 0 && 'mt-8 pt-8 border-t border-white/5'
+                  )}
+                >
+                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-5">
+                    지난 경기
+                  </p>
+                  <div className="space-y-8">{pastMatches.map(renderMatchRow)}</div>
+                </div>
+              )}
+            </>
           )}
         </section>
 
