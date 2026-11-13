@@ -92,11 +92,16 @@ export default function TeamSelectPage() {
       resetJoin();
       router.push('/home');
     } catch (err: unknown) {
-      const message =
+      const response =
         err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          ? (err as { response?: { status?: number; data?: { message?: string } } }).response
           : undefined;
-      toast.error(message || '초대 코드가 유효하지 않습니다');
+
+      if (response?.status === 409) {
+        toast.error('이미 소속된 팀입니다');
+      } else {
+        toast.error(response?.data?.message || '초대 코드가 유효하지 않습니다');
+      }
     } finally {
       setIsJoining(false);
     }
