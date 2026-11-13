@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { MapPin, Clock, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
+import { MapPin, Clock, CheckCircle2, XCircle, HelpCircle, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
@@ -34,6 +34,7 @@ export default function MatchInfoPage() {
   const [votes, setVotes] = useState<VoteItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
+  const [showPending, setShowPending] = useState(false);
 
   useEffect(() => {
     if (!matchId) return;
@@ -281,12 +282,22 @@ export default function MatchInfoPage() {
         {/* Pending list */}
         {pending.length > 0 && (
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => setShowPending((v) => !v)}
+              className="flex items-center gap-2 mb-3 w-full"
+            >
               <HelpCircle className="w-3.5 h-3.5 text-zinc-600" />
               <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                미정 {pending.length}
+                미응답 {pending.length}
               </span>
-            </div>
+              <ChevronDown
+                className={cn(
+                  'w-3.5 h-3.5 text-zinc-600 transition-transform',
+                  showPending && 'rotate-180'
+                )}
+              />
+            </button>
+            {showPending && (
             <div className="flex flex-wrap gap-2">
               {pending.map((v) => (
                 <div
@@ -300,6 +311,7 @@ export default function MatchInfoPage() {
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
       </section>
