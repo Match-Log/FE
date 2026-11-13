@@ -141,9 +141,10 @@ export default function HomePage() {
 
   const handleVote = async (status: 'ATTEND' | 'ABSENT') => {
     if (!upcomingMatch || isVoting) return;
+    const nextStatus = myVote?.status === status ? 'PENDING' : status;
     setIsVoting(true);
     try {
-      await voteApi.vote(upcomingMatch.matchId, { status });
+      await voteApi.vote(upcomingMatch.matchId, { status: nextStatus });
       const votesRes = await voteApi.getVotes(upcomingMatch.matchId);
       setVotes(votesRes.data.votes);
     } catch {

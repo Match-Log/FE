@@ -52,9 +52,10 @@ export default function MatchInfoPage() {
 
   const handleVote = async (status: 'ATTEND' | 'ABSENT') => {
     if (!match || isVoting || match.finished) return;
+    const nextStatus = myVote?.status === status ? 'PENDING' : status;
     setIsVoting(true);
     try {
-      await voteApi.vote(matchId, { status });
+      await voteApi.vote(matchId, { status: nextStatus });
       const res = await voteApi.getVotes(matchId);
       setVotes(res.data.votes);
     } catch {
