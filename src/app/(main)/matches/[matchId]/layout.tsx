@@ -35,6 +35,12 @@ export default function MatchLayout({ children }: { children: React.ReactNode })
     return t.path === '' ? pathname === base : pathname.startsWith(full);
   });
 
+  // 공유 링크로 바로 들어와 이전 기록이 없으면 홈으로 보낸다.
+  const handleBack = () => {
+    if (window.history.length > 1) router.back();
+    else router.replace('/home');
+  };
+
   const handleShare = async () => {
     if (navigator.share) {
       await navigator.share({ title: 'MatchLog', url: window.location.href }).catch(() => {});
@@ -49,7 +55,7 @@ export default function MatchLayout({ children }: { children: React.ReactNode })
       <header className="sticky top-0 z-50 bg-[#05060B]/90 backdrop-blur-md border-b border-white/5">
         <div className="px-5 pt-8 pb-4 flex items-center justify-between">
           <button
-            onClick={() => router.back()}
+            onClick={handleBack}
             className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -92,6 +98,9 @@ export default function MatchLayout({ children }: { children: React.ReactNode })
               <Link
                 key={tab.label}
                 href={href}
+                // 탭 전환은 히스토리에 쌓지 않는다 → 뒤로가기 한 번이면 경기 상세에 들어오기 전 화면으로
+                replace
+                scroll={false}
                 className={cn(
                   'flex-1 py-3.5 text-center text-[10px] font-black uppercase tracking-widest transition-all',
                   isActive ? 'text-white border-b-2 border-[#00F5FF]' : 'text-zinc-600 border-b-2 border-transparent'
