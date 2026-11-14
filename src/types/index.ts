@@ -50,6 +50,7 @@ export interface Player {
   weight?: number;
   preferredFoot?: PreferredFoot;
   career?: Career;
+  yearsOfExperience?: number;
   preferredPosition?: Position;
   subPosition?: Position;
   createdAt?: string;
