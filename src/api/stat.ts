@@ -11,6 +11,6 @@ export const statApi = {
   updatePlayerStat: (
     matchId: number,
     playerId: number,
-    data: { goals?: number; assists?: number; saves?: number }
+    data: { goals?: number; assists?: number; saves?: number | null }
   ) => apiClient.put<PlayerStat>(`/api/v1/matches/${matchId}/stats/players/${playerId}`, data),
 };
