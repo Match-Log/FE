@@ -1,11 +1,12 @@
 'use client';
 
-import { getNameInitials } from '@/lib/utils';
+import { getNameInitials, cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ChevronLeft, Pin, Pencil, Trash2, Send, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { boardApi } from '@/api/board';
+import { voteApi } from '@/api/vote';
 import { useTeamStore } from '@/stores/teamStore';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import type { BoardDetail, Comment } from '@/types';
+import type { BoardDetail, Comment, VoteItem } from '@/types';
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -39,6 +40,10 @@ export default function BoardDetailPage() {
   const [post, setPost] = useState<BoardDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 경기와 연결된 게시글이면 참석 투표 카드를 띄운다 (Home 투표 UI와 동일).
+  const [votes, setVotes] = useState<VoteItem[]>([]);
+  const [isVoting, setIsVoting] = useState(false);
+
   // Comment state
   const [commentInput, setCommentInput] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
@@ -57,6 +62,14 @@ export default function BoardDetailPage() {
   const commentInputRef = useRef<HTMLInputElement>(null);
 
   const id = Number(boardId);
+  const matchId = post?.matchId;
+  // 투표 글 판별은 type이 담당한다. matchId는 "어떤 경기의 투표냐"를 가리키는 보조값.
+  const isVotePost = post?.type === 'VOTE' && matchId != null;
+
+  const myVote = votes.find((v) => v.playerId === myPlayerId);
+  const attendCount = votes.filter((v) => v.status === 'ATTEND').length;
+  const absentCount = votes.filter((v) => v.status === 'ABSENT').length;
+  const pendingCount = votes.filter((v) => v.status === 'PENDING').length;
 
   useEffect(() => {
     boardApi.getPost(id)
@@ -64,6 +77,28 @@ export default function BoardDetailPage() {
       .catch(() => toast.error('게시글을 불러올 수 없습니다'))
       .finally(() => setIsLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (matchId == null) return;
+    voteApi.getVotes(matchId)
+      .then((r) => setVotes(r.data.votes))
+      .catch(() => {});
+  }, [matchId]);
+
+  const handleVote = async (status: 'ATTEND' | 'ABSENT') => {
+    if (matchId == null || isVoting) return;
+    const nextStatus = myVote?.status === status ? 'PENDING' : status;
+    setIsVoting(true);
+    try {
+      await voteApi.vote(matchId, { status: nextStatus });
+      const res = await voteApi.getVotes(matchId);
+      setVotes(res.data.votes);
+    } catch {
+      toast.error('투표에 실패했습니다');
+    } finally {
+      setIsVoting(false);
+    }
+  };
 
   const handleTogglePin = async () => {
     if (!post) return;
@@ -93,7 +128,7 @@ export default function BoardDetailPage() {
   };
 
   const handleSendComment = async () => {
-    if (!commentInput.trim() || !post) return;
+    if (!commentInput.trim() || !post || isSendingComment) return;
     setIsSendingComment(true);
     try {
       const res = await boardApi.createComment(post.boardId, { content: commentInput.trim() });
@@ -219,7 +254,7 @@ export default function BoardDetailPage() {
       </header>
 
       {/* Post content */}
-      <main className="flex-1 px-6 pt-6 pb-32">
+      <main className="flex-1 px-6 pt-6 pb-10">
         {/* Pinned indicator */}
         {post.pinned && (
           <div className="flex items-center gap-1.5 mb-4">
@@ -244,6 +279,99 @@ export default function BoardDetailPage() {
 
         {/* Content */}
         <p className="text-sm font-medium text-zinc-300 leading-7 whitespace-pre-wrap">{post.content}</p>
+
+        {/* Attendance vote (type === VOTE 글만) */}
+        {isVotePost && (
+          <div
+            className="mt-8 p-6 border border-[#00F5FF]/10 rounded-[1.5rem]"
+            style={{ background: 'rgba(18, 20, 32, 0.4)' }}
+          >
+            <p className="text-[10px] font-black text-[#00F5FF] uppercase tracking-widest mb-5">
+              참석 투표
+            </p>
+
+            {/* Vote Buttons */}
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <button
+                onClick={() => handleVote('ATTEND')}
+                disabled={isVoting}
+                className={cn(
+                  'py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98]',
+                  myVote?.status === 'ATTEND'
+                    ? 'accent-gradient text-black shadow-[0_0_20px_rgba(0,245,255,0.2)]'
+                    : 'bg-[#1A1B23] border border-white/5 text-zinc-500'
+                )}
+              >
+                참석
+              </button>
+              <button
+                onClick={() => handleVote('ABSENT')}
+                disabled={isVoting}
+                className={cn(
+                  'py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98]',
+                  myVote?.status === 'ABSENT'
+                    ? 'accent-gradient text-black shadow-[0_0_20px_rgba(0,245,255,0.2)]'
+                    : 'bg-[#1A1B23] border border-white/5 text-zinc-500'
+                )}
+              >
+                불참
+              </button>
+            </div>
+
+            {/* Vote Stats */}
+            <div className="flex items-center justify-between px-2">
+              <div className="text-center">
+                <p className="text-2xl font-black text-[#00F5FF] mb-1">
+                  {String(attendCount).padStart(2, '0')}
+                </p>
+                <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Attend</p>
+              </div>
+              <div className="w-px h-10 bg-white/5" />
+              <div className="text-center">
+                <p className="text-2xl font-black text-zinc-600 mb-1">
+                  {String(pendingCount).padStart(2, '0')}
+                </p>
+                <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Pending</p>
+              </div>
+              <div className="w-px h-10 bg-white/5" />
+              <div className="text-center">
+                <p className="text-2xl font-black text-zinc-400 mb-1">
+                  {String(absentCount).padStart(2, '0')}
+                </p>
+                <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Absent</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Comment input (참석 투표 카드와 댓글 목록 사이에 inline 배치) */}
+        <div className="mt-8 flex items-center gap-3">
+          <input
+            ref={commentInputRef}
+            value={commentInput}
+            onChange={(e) => setCommentInput(e.target.value)}
+            onKeyDown={(e) => {
+              // 한글 IME 조합 중 Enter는 무시 (중복 제출 방지)
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                handleSendComment();
+              }
+            }}
+            placeholder="댓글을 입력하세요..."
+            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-medium text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#00F5FF]/40"
+          />
+          <button
+            onClick={handleSendComment}
+            disabled={!commentInput.trim() || isSendingComment}
+            className="w-10 h-10 flex items-center justify-center rounded-xl accent-gradient disabled:opacity-40 flex-shrink-0"
+          >
+            {isSendingComment ? (
+              <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+            ) : (
+              <Send className="w-4 h-4 text-black" />
+            )}
+          </button>
+        </div>
 
         {/* Comments section */}
         <div className="mt-10">
@@ -294,7 +422,7 @@ export default function BoardDetailPage() {
                           value={editingContent}
                           onChange={(e) => setEditingContent(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveEditComment(comment.commentId);
+                            if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSaveEditComment(comment.commentId);
                             if (e.key === 'Escape') setEditingCommentId(null);
                           }}
                           autoFocus
@@ -323,31 +451,6 @@ export default function BoardDetailPage() {
           )}
         </div>
       </main>
-
-      {/* Fixed comment input */}
-      <div className="fixed bottom-20 left-0 right-0 px-4 pb-3 pt-3 bg-[#05060B]/95 backdrop-blur-md border-t border-white/5 z-40">
-        <div className="flex items-center gap-3">
-          <input
-            ref={commentInputRef}
-            value={commentInput}
-            onChange={(e) => setCommentInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendComment(); } }}
-            placeholder="댓글을 입력하세요..."
-            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-medium text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#00F5FF]/40"
-          />
-          <button
-            onClick={handleSendComment}
-            disabled={!commentInput.trim() || isSendingComment}
-            className="w-10 h-10 flex items-center justify-center rounded-xl accent-gradient disabled:opacity-40 flex-shrink-0"
-          >
-            {isSendingComment ? (
-              <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-            ) : (
-              <Send className="w-4 h-4 text-black" />
-            )}
-          </button>
-        </div>
-      </div>
 
       {/* Delete post confirmation dialog */}
       <Dialog open={showDeletePostDialog} onOpenChange={setShowDeletePostDialog}>

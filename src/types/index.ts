@@ -258,6 +258,7 @@ export interface BoardPost {
   playerId: number;
   playerName: string;
   title: string;
+  type: 'VOTE' | 'GENERAL';
   matchId?: number;
   pinned?: boolean;
   createdAt: string;
@@ -271,6 +272,7 @@ export interface BoardDetail {
   playerName: string;
   title: string;
   content: string;
+  type: 'VOTE' | 'GENERAL';
   matchId?: number;
   pinned?: boolean;
   createdAt: string;
