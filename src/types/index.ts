@@ -50,6 +50,7 @@ export interface Player {
   weight?: number;
   preferredFoot?: PreferredFoot;
   career?: Career;
+  yearsOfExperience?: number;
   preferredPosition?: Position;
   subPosition?: Position;
   createdAt?: string;
@@ -165,18 +166,62 @@ export interface Lineup {
 }
 
 // Feedback - matches FeedbackResponseDto
+// team scope는 content만, player scope는 rating(1~10)·pros·cons·tags·isVisible까지 내려온다.
 export interface Feedback {
   feedbackId?: number;
   matchId?: number;
   scope?: 'team' | 'player';
-  playerId?: number;
-  content?: string;
-  rating?: number;
-  pros?: string;
-  cons?: string;
+  playerId?: number | null;
+  content?: string | null;
+  rating?: number | null;
+  pros?: string | null;
+  cons?: string | null;
+  tags?: string[] | null;
+  isVisible?: boolean | null;
+  createdAt?: string; // BE DTO에는 없음. 기존 화면 호환용
+  updatedAt?: string;
+}
+
+// SavePersonalFeedbackRequestDto
+export interface SavePersonalFeedbackRequest {
+  content?: string | null;
+  rating?: number | null;
+  pros?: string | null;
+  cons?: string | null;
   tags?: string[];
   isVisible?: boolean;
-  createdAt?: string;
+}
+
+// Tactic enums - matches BE constant/tactic/*
+export type DefensiveLineHeight = 'HIGH_LINE' | 'MID_BLOCK' | 'LOW_BLOCK';
+export type DefensiveSpacing = 'COMPACT' | 'WIDE';
+export type MarkingType = 'MAN_MARK' | 'ZONE_MARK'; // FlankDefense, SetPieceDefense 공통
+export type CrossType = 'EARLY_CROSS' | 'BOX_ENTRY_CROSS' | 'CUTBACK';
+export type SetPieceAttack = 'SHORT_CORNER' | 'DIRECT_SHOT' | 'HEADER_TARGET';
+export type PossessionStrategy = 'POSSESSION' | 'COUNTER_ATTACK' | 'MIXED';
+export type PressingTrigger = 'FRONT' | 'MIDFIELD' | 'OWN_HALF';
+
+// SaveTacticRequestDto. team은 전체 필드, player(개인 전술)는 content만 쓴다.
+export interface TacticFields {
+  content?: string | null;
+  defensiveLineHeight?: DefensiveLineHeight | null;
+  defensiveSpacing?: DefensiveSpacing | null;
+  setPieceDefense?: MarkingType | null;
+  flankDefense?: MarkingType | null;
+  offsideTrap?: boolean | null;
+  crossType?: CrossType | null;
+  setPieceAttack?: SetPieceAttack | null;
+  possessionStrategy?: PossessionStrategy | null;
+  pressingTrigger?: PressingTrigger | null;
+  pressingIntensity?: number | null; // 1~5
+}
+
+// Tactic - matches TacticResponseDto
+export interface Tactic extends TacticFields {
+  tacticId: number;
+  matchId: number;
+  scope: 'team' | 'player';
+  playerId?: number | null;
   updatedAt?: string;
 }
 

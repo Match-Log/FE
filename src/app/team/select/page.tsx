@@ -337,7 +337,10 @@ export default function TeamSelectPage() {
                   </div>
                 </div>
                 <div className="divide-y divide-white/5">
-                  <button className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/[0.03] transition-colors group">
+                  <button
+                    onClick={() => router.push('/profile/edit')}
+                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/[0.03] transition-colors group"
+                  >
                     <div className="flex items-center gap-4">
                       <PenLine className="w-4 h-4 text-zinc-600 group-hover:text-[#00F5FF]" />
                       <span className="text-[11px] font-black uppercase tracking-widest text-zinc-300">

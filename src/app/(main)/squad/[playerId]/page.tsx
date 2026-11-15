@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, PenLine } from 'lucide-react';
+import { ChevronLeft, ChevronRight, PenLine, Shirt, UserRound } from 'lucide-react';
 import { playerApi } from '@/api/player';
 import { matchApi } from '@/api/match';
 import { statApi } from '@/api/stat';
@@ -10,6 +10,8 @@ import { feedbackApi } from '@/api/feedback';
 import { participationApi } from '@/api/participation';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
+import TeamInfoEditDialog from '@/components/squad/TeamInfoEditDialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn, getNameInitials } from '@/lib/utils';
 import type { Player, PlayerStat, Feedback, MatchListItem, RosterItem } from '@/types';
 
@@ -35,7 +37,20 @@ export default function PlayerProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const isOwnProfile = myPlayerId === targetPlayerId;
-  const canEdit = isOwnProfile || userRole === 'MANAGER';
+  const isManager = userRole === 'MANAGER';
+  // 본인: 선수 프로필(키·주발 등) 수정 / 매니저: 팀 내 정보(등번호·포지션) 수정
+  const canEditProfile = isOwnProfile;
+  const canEditTeamInfo = isManager && !!rosterItem;
+  const canEdit = canEditProfile || canEditTeamInfo;
+
+  const [showEditMenu, setShowEditMenu] = useState(false);
+  const [showTeamInfoEdit, setShowTeamInfoEdit] = useState(false);
+
+  const handleEdit = () => {
+    if (canEditProfile && canEditTeamInfo) setShowEditMenu(true);
+    else if (canEditProfile) router.push('/profile/edit');
+    else if (canEditTeamInfo) setShowTeamInfoEdit(true);
+  };
 
   useEffect(() => {
     if (!teamId || !targetPlayerId) return;
@@ -115,7 +130,11 @@ export default function PlayerProfilePage() {
         </button>
         <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">Player Profile</h1>
         {canEdit ? (
-          <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-zinc-400">
+          <button
+            onClick={handleEdit}
+            aria-label="수정"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-zinc-400 hover:text-[#00F5FF] hover:border-[#00F5FF]/30 transition-colors"
+          >
             <PenLine className="w-4 h-4" />
           </button>
         ) : (
@@ -308,6 +327,64 @@ export default function PlayerProfilePage() {
           </>
         )}
       </main>
+
+      {/* 매니저가 본인 프로필을 볼 때: 어떤 정보를 수정할지 선택 */}
+      <Dialog open={showEditMenu} onOpenChange={setShowEditMenu}>
+        <DialogContent className="bg-[#0E0F18] border border-white/10 text-white max-w-xs mx-auto overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-[2px] accent-gradient" />
+          <DialogHeader className="pt-1">
+            <DialogTitle className="text-base font-black tracking-tight">무엇을 수정할까요?</DialogTitle>
+            <DialogDescription className="text-[11px] font-bold text-zinc-500">수정할 정보를 선택하세요</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {[
+              {
+                icon: <UserRound className="w-4 h-4 text-[#00F5FF]" />,
+                title: '선수 프로필',
+                desc: '키·몸무게·주발·경력 등 개인 정보',
+                onClick: () => {
+                  setShowEditMenu(false);
+                  router.push('/profile/edit');
+                },
+              },
+              {
+                icon: <Shirt className="w-4 h-4 text-[#A970FF]" />,
+                title: '팀 정보',
+                desc: '이 팀에서의 등번호와 포지션',
+                onClick: () => {
+                  setShowEditMenu(false);
+                  setShowTeamInfoEdit(true);
+                },
+              },
+            ].map((item) => (
+              <button
+                key={item.title}
+                onClick={item.onClick}
+                className="w-full flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] hover:bg-white/[0.06] px-4 py-3.5 text-left transition-colors"
+              >
+                <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  {item.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black">{item.title}</p>
+                  <p className="text-[10px] font-bold text-zinc-500">{item.desc}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-600" />
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {teamId && rosterItem && (
+        <TeamInfoEditDialog
+          open={showTeamInfoEdit}
+          onOpenChange={setShowTeamInfoEdit}
+          teamId={teamId}
+          member={rosterItem}
+          onSaved={(next) => setRosterItem((prev) => (prev ? { ...prev, ...next } : prev))}
+        />
+      )}
     </div>
   );
 }
