@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronLeft, Share2 } from 'lucide-react';
 import { matchApi } from '@/api/match';
 import { cn } from '@/lib/utils';
+import { MatchContext } from '@/components/match/MatchContext';
 import { useTeamStore } from '@/stores/teamStore';
 import type { Match } from '@/types';
 
@@ -113,7 +114,9 @@ export default function MatchLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
 
-      <div className="flex-1">{children}</div>
+      <MatchContext.Provider value={{ match, setMatch }}>
+        <div className="flex-1">{children}</div>
+      </MatchContext.Provider>
     </div>
   );
 }

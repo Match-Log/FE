@@ -9,6 +9,7 @@ import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 import type { MatchListItem } from '@/types';
 import { cn } from '@/lib/utils';
+import { getMatchStatus } from '@/lib/match';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const MONTH_KO = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
@@ -90,12 +91,13 @@ export default function SchedulePage() {
 
   const todayKey = toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
 
+  // 예정/지난 경기는 finished만이 아니라 날짜로도 판단한다(lib/match.ts). 홈 화면과 같은 기준.
   const upcomingMatches = matches
-    .filter((m) => !m.finished)
+    .filter((m) => getMatchStatus(m, now) === 'UPCOMING')
     .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
 
   const pastMatches = matches
-    .filter((m) => m.finished)
+    .filter((m) => getMatchStatus(m, now) !== 'UPCOMING')
     .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime());
 
   const handleDayClick = (dateKey: string) => {
@@ -161,8 +163,8 @@ export default function SchedulePage() {
             {calendarCells.map((cell, i) => {
               const hasMatch = matchByDate.has(cell.dateKey);
               const matchesOnDay = matchByDate.get(cell.dateKey) ?? [];
-              const hasScheduled = matchesOnDay.some((m) => !m.finished);
-              const hasPast = matchesOnDay.some((m) => m.finished);
+              const hasScheduled = matchesOnDay.some((m) => getMatchStatus(m, now) === 'UPCOMING');
+              const hasPast = matchesOnDay.some((m) => getMatchStatus(m, now) !== 'UPCOMING');
               const isToday = cell.dateKey === todayKey;
 
               return (
@@ -273,11 +275,15 @@ export default function SchedulePage() {
                         <p className="text-[8px] text-zinc-500 font-bold uppercase">{match.location}</p>
                       </div>
                     </div>
-                    {hasScore && (
+                    {getMatchStatus(match, now) === 'AWAITING_RESULT' ? (
+                      <span className="text-[9px] font-black px-2 py-1 rounded-md border border-[#7000FF]/30 bg-[#7000FF]/10 text-[#C9A6FF]">
+                        결과 미입력
+                      </span>
+                    ) : hasScore ? (
                       <span className={cn('text-sm font-black tracking-tighter', won)}>
                         {myScore} : {opponentScore}
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 </Link>
               );

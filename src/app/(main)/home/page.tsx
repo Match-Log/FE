@@ -13,6 +13,7 @@ import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 import type { MatchListItem, VoteItem, RosterItem, BoardPost } from '@/types';
 import { cn, getNameInitials } from '@/lib/utils';
+import { isUpcomingMatch } from '@/lib/match';
 
 function getDaysUntil(dateStr: string): number {
   const matchDate = new Date(dateStr);
@@ -80,9 +81,8 @@ export default function HomePage() {
       const matchesRes = await matchApi.getMatches(teamId);
       const all = matchesRes.data;
       // 예정 = 아직 안 끝났고 오늘 이후인 경기. 날짜가 지났는데 결과를 안 넣은 경기는 지난 경기로 본다.
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const isUpcoming = (m: MatchListItem) => !m.finished && new Date(m.matchDate) >= todayStart;
+      const now = new Date();
+      const isUpcoming = (m: MatchListItem) => isUpcomingMatch(m, now);
       const scheduled = all
         .filter(isUpcoming)
         .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());

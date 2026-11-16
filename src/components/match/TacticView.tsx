@@ -5,16 +5,7 @@ import { ClipboardList, Pencil, Target, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { tacticApi } from '@/api/tactic';
 import { cn, getErrorMessage, nullIfNotFound } from '@/lib/utils';
-import {
-  CROSS_OPTIONS,
-  DEFENSIVE_LINE_OPTIONS,
-  DEFENSIVE_SPACING_OPTIONS,
-  EMPTY_TACTIC,
-  MARKING_OPTIONS,
-  POSSESSION_OPTIONS,
-  PRESSING_TRIGGER_OPTIONS,
-  SET_PIECE_ATTACK_OPTIONS,
-} from '@/constants/tactic';
+import { EMPTY_TACTIC } from '@/constants/tactic';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { Tactic, TacticFields, VoteItem } from '@/types';
@@ -22,14 +13,13 @@ import {
   Avatar,
   EmptyState,
   GhostButton,
-  OptionRow,
   SectionCard,
   Spinner,
   TextArea,
-  ToggleRow,
   formatUpdatedAt,
 } from './shared';
-import { IntensityMeter, TacticPitch } from './TacticPitch';
+import { TacticPitch } from './TacticPitch';
+import { TacticOptionSections } from './TacticSections';
 
 interface Props {
   matchId: number;
@@ -213,38 +203,7 @@ export default function TacticView({ matchId, isManager, myPlayerId, attendees }
 
       {showBoard && (
         <>
-          <SectionCard eyebrow="Defense" title="수비">
-            <div className="divide-y divide-white/5 -my-3">
-              <OptionRow label="수비 라인" options={DEFENSIVE_LINE_OPTIONS} value={view.defensiveLineHeight} editable={isEditing} onChange={(v) => set('defensiveLineHeight', v)} />
-              <OptionRow label="수비 간격" options={DEFENSIVE_SPACING_OPTIONS} value={view.defensiveSpacing} editable={isEditing} onChange={(v) => set('defensiveSpacing', v)} />
-              <OptionRow label="측면 수비" options={MARKING_OPTIONS} value={view.flankDefense} editable={isEditing} onChange={(v) => set('flankDefense', v)} />
-              <ToggleRow label="오프사이드 트랩" hint="라인을 동시에 올려 오프사이드를 유도" value={view.offsideTrap} editable={isEditing} onChange={(v) => set('offsideTrap', v)} />
-            </div>
-          </SectionCard>
-
-          <SectionCard eyebrow="Pressing" title="압박">
-            <div className="divide-y divide-white/5 -my-3">
-              <OptionRow label="압박 시작 지점" options={PRESSING_TRIGGER_OPTIONS} value={view.pressingTrigger} editable={isEditing} onChange={(v) => set('pressingTrigger', v)} />
-              <div className="py-3">
-                <p className="text-[11px] font-black text-zinc-400 mb-2">압박 강도</p>
-                <IntensityMeter value={view.pressingIntensity} editable={isEditing} onChange={(v) => set('pressingIntensity', v)} />
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard eyebrow="Attack" title="공격">
-            <div className="divide-y divide-white/5 -my-3">
-              <OptionRow label="공격 전개" options={POSSESSION_OPTIONS} value={view.possessionStrategy} editable={isEditing} onChange={(v) => set('possessionStrategy', v)} />
-              <OptionRow label="크로스" options={CROSS_OPTIONS} value={view.crossType} editable={isEditing} onChange={(v) => set('crossType', v)} />
-            </div>
-          </SectionCard>
-
-          <SectionCard eyebrow="Set Piece" title="세트피스">
-            <div className="divide-y divide-white/5 -my-3">
-              <OptionRow label="공격" options={SET_PIECE_ATTACK_OPTIONS} value={view.setPieceAttack} editable={isEditing} onChange={(v) => set('setPieceAttack', v)} />
-              <OptionRow label="수비" options={MARKING_OPTIONS} value={view.setPieceDefense} editable={isEditing} onChange={(v) => set('setPieceDefense', v)} />
-            </div>
-          </SectionCard>
+          <TacticOptionSections view={view} editable={isEditing} onChange={set} />
 
           {isEditing && (
             <div className="grid grid-cols-2 gap-2 relative z-10">

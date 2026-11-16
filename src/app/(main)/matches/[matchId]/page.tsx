@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { MapPin, CheckCircle2, XCircle, HelpCircle, ChevronDown } from 'lucide-react';
+import { MapPin, CheckCircle2, XCircle, HelpCircle, ChevronDown, Trophy, PenLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 import MyStatInput from '@/components/match/MyStatInput';
+import MatchResultDialog from '@/components/match/MatchResultDialog';
+import { useMatchContext } from '@/components/match/MatchContext';
 import { cn, getNameInitials } from '@/lib/utils';
 import type { Match, VoteItem } from '@/types';
 
@@ -42,6 +44,15 @@ export default function MatchInfoPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
   const [showPending, setShowPending] = useState(false);
+  const [resultOpen, setResultOpen] = useState(false);
+  const matchCtx = useMatchContext();
+  const isManager = role === 'MANAGER';
+
+  // 결과 저장 후 이 페이지와 레이아웃(탭 라벨 Tactic → Feedback)을 함께 갱신
+  const handleResultSaved = (next: Match) => {
+    setMatch(next);
+    matchCtx?.setMatch(next);
+  };
 
   useEffect(() => {
     if (!matchId) return;
@@ -93,6 +104,8 @@ export default function MatchInfoPage() {
   const isCompleted = match.finished;
   const myScore = match.homeAway === 'HOME' ? match.scoreHome : match.scoreAway;
   const opponentScore = match.homeAway === 'HOME' ? match.scoreAway : match.scoreHome;
+  // 경기 시작 시각이 지났는데 아직 종료 처리가 안 된 경기 → 매니저에게 결과 입력을 유도
+  const awaitingResult = isScheduled && new Date(match.matchDate).getTime() <= Date.now();
 
   return (
     <main className="px-5 pt-6 pb-28 space-y-6 relative">
@@ -190,7 +203,37 @@ export default function MatchInfoPage() {
           )}
         </div>
 
+        {/* 매니저: 결과 입력(종료 처리) / 스코어 수정 */}
+        {isManager && (isCompleted || awaitingResult) && (
+          <button
+            onClick={() => setResultOpen(true)}
+            className={cn(
+              'mt-4 w-full h-11 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98]',
+              isCompleted
+                ? 'bg-white/[0.03] border border-white/10 text-zinc-300'
+                : 'accent-gradient text-black'
+            )}
+          >
+            {isCompleted ? <PenLine className="w-3.5 h-3.5" /> : <Trophy className="w-3.5 h-3.5" />}
+            {isCompleted ? '스코어 수정' : '경기 결과 입력'}
+          </button>
+        )}
+        {!isManager && awaitingResult && (
+          <p className="mt-4 text-center text-[11px] font-bold text-zinc-500">
+            매니저가 경기 결과를 입력하면 피드백과 스탯 입력이 열려요
+          </p>
+        )}
       </section>
+
+      {isManager && (
+        <MatchResultDialog
+          open={resultOpen}
+          onOpenChange={setResultOpen}
+          match={match}
+          teamName={teamName ?? 'My Team'}
+          onSaved={handleResultSaved}
+        />
+      )}
 
       {/* 내 스탯 입력: 종료된 경기 + 등록 선수 + 본인이 출석(ATTEND) 확정일 때만 */}
       {match.finished && playerId != null && myVote?.status === 'ATTEND' && (
