@@ -8,6 +8,7 @@ import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
+import MyStatInput from '@/components/match/MyStatInput';
 import { cn, getNameInitials } from '@/lib/utils';
 import type { Match, VoteItem } from '@/types';
 
@@ -190,6 +191,11 @@ export default function MatchInfoPage() {
         </div>
 
       </section>
+
+      {/* 내 스탯 입력: 종료된 경기 + 등록 선수 + 본인이 출석(ATTEND) 확정일 때만 */}
+      {match.finished && playerId != null && myVote?.status === 'ATTEND' && (
+        <MyStatInput matchId={matchId} playerId={playerId} />
+      )}
 
       {/* Map Preview placeholder */}
       <section className="rounded-3xl overflow-hidden border border-white/5 relative z-10 bg-white/[0.02]">
