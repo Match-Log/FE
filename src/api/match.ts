@@ -2,7 +2,9 @@ import { apiClient } from './client';
 import type { Match, MatchListItem } from '@/types';
 
 export const matchApi = {
-  getMatches: (teamId: number, status?: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED') =>
+  // status: BE는 upcoming(isFinished=false) / finished(isFinished=true)만 인식하고, 생략하면 전체를 준다.
+  // 날짜 기준이 아니라 종료 처리 여부 기준이므로 화면 분류는 lib/match.ts의 getMatchStatus를 쓴다.
+  getMatches: (teamId: number, status?: 'upcoming' | 'finished') =>
     apiClient.get<MatchListItem[]>(
       `/api/v1/teams/${teamId}/matches${status ? `?status=${status}` : ''}`
     ),

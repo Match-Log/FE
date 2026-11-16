@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronDown, EyeOff, MessageSquareText, Pencil, Plus, Sparkles, ThumbsUp, Wrench } from 'lucide-react';
+import { ChevronRight, EyeOff, MessageSquareText, Pencil, Plus, Sparkles, ThumbsUp, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { feedbackApi } from '@/api/feedback';
 import { tacticApi } from '@/api/tactic';
@@ -23,7 +23,7 @@ import {
   formatUpdatedAt,
   ratingColor,
 } from './shared';
-import { TacticPitch } from './TacticPitch';
+import TacticReplayDialog from './TacticReplayDialog';
 
 interface Props {
   matchId: number;
@@ -47,6 +47,7 @@ export default function FeedbackView({ matchId, isManager, myPlayerId, attendees
   const [myFeedback, setMyFeedback] = useState<Feedback | null>(null);
   const [allFeedbacks, setAllFeedbacks] = useState<Feedback[]>([]);
   const [tactic, setTactic] = useState<Tactic | null>(null);
+  const [personalTactics, setPersonalTactics] = useState<Tactic[]>([]);
   const [showTactic, setShowTactic] = useState(false);
 
   const [isEditingTeam, setIsEditingTeam] = useState(false);
@@ -66,12 +67,14 @@ export default function FeedbackView({ matchId, isManager, myPlayerId, attendees
       isManager || myPlayerId == null ? Promise.resolve(null) : safe(nullIfNotFound(feedbackApi.getFeedback(matchId, myPlayerId))),
       isManager ? feedbackApi.getAllPersonalFeedbacks(matchId).then((r) => r.data).catch(() => [] as Feedback[]) : Promise.resolve([] as Feedback[]),
       safe(nullIfNotFound(tacticApi.getTeamTactic(matchId))),
+      tacticApi.getPersonalTactics(matchId).then((r) => r.data).catch(() => [] as Tactic[]),
     ])
-      .then(([team, mine, all, t]) => {
+      .then(([team, mine, all, t, pt]) => {
         setTeamFeedback(team);
         setMyFeedback(mine);
         setAllFeedbacks(all);
         setTactic(t);
+        setPersonalTactics(pt);
       })
       .finally(() => setIsLoading(false));
   }, [matchId, isManager, myPlayerId]);
@@ -297,27 +300,29 @@ export default function FeedbackView({ matchId, isManager, myPlayerId, attendees
         </SectionCard>
       )}
 
-      {/* 경기 전 전술 다시보기 */}
+      {/* 경기 전 전술 다시보기: 누르면 전술 전체를 카드로 띄운다 */}
       {tactic && (
-        <section className="relative z-10 rounded-3xl border border-white/5 overflow-hidden" style={{ background: 'rgba(18, 20, 32, 0.5)' }}>
-          <button onClick={() => setShowTactic((v) => !v)} className="w-full px-5 py-4 flex items-center justify-between">
+        <>
+          <button
+            onClick={() => setShowTactic(true)}
+            className="relative z-10 w-full rounded-3xl border border-white/5 px-5 py-4 flex items-center justify-between active:scale-[0.99] transition-transform"
+            style={{ background: 'rgba(18, 20, 32, 0.5)' }}
+          >
             <div className="text-left">
               <p className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-600 mb-1">Tactic Replay</p>
               <p className="text-sm font-black">경기 전 전술 다시보기</p>
             </div>
-            <ChevronDown className={cn('w-4 h-4 text-zinc-500 transition-transform', showTactic && 'rotate-180')} />
+            <ChevronRight className="w-4 h-4 text-zinc-500" />
           </button>
-          {showTactic && (
-            <div className="px-5 pb-5 space-y-4">
-              {tactic.content && (
-                <p className="text-xs font-bold text-zinc-400 leading-relaxed whitespace-pre-wrap border-l-2 border-[#00F5FF]/50 pl-3">
-                  {tactic.content}
-                </p>
-              )}
-              <TacticPitch tactic={tactic} />
-            </div>
-          )}
-        </section>
+          <TacticReplayDialog
+            open={showTactic}
+            onOpenChange={setShowTactic}
+            tactic={tactic}
+            personal={personalTactics}
+            attendees={attendees}
+            myPlayerId={myPlayerId}
+          />
+        </>
       )}
 
       {/* 개인 피드백 작성 (manager) */}
