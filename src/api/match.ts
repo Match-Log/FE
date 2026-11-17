@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Match, MatchListItem } from '@/types';
+import type { Match, MatchListItem, MatchPlaceFields } from '@/types';
 
 export const matchApi = {
   // status: BE는 upcoming(isFinished=false) / finished(isFinished=true)만 인식하고, 생략하면 전체를 준다.
@@ -18,7 +18,7 @@ export const matchApi = {
       homeAway: 'HOME' | 'AWAY';
       location: string;
       memo?: string;
-    }
+    } & MatchPlaceFields
   ) => apiClient.post<Match>(`/api/v1/teams/${teamId}/matches`, data),
 
   getMatch: (matchId: number) =>
@@ -36,7 +36,7 @@ export const matchApi = {
       scoreHome?: number;
       scoreAway?: number;
       isFinished?: boolean;
-    }
+    } & MatchPlaceFields
   ) => apiClient.patch<Match>(`/api/v1/matches/${matchId}`, data),
 
   deleteMatch: (matchId: number) =>
