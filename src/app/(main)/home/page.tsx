@@ -13,7 +13,7 @@ import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 import type { MatchListItem, VoteItem, RosterItem, BoardPost } from '@/types';
 import { cn, getNameInitials } from '@/lib/utils';
-import { isUpcomingMatch } from '@/lib/match';
+import { getMatchStatus, isUpcomingMatch } from '@/lib/match';
 
 function getDaysUntil(dateStr: string): number {
   const matchDate = new Date(dateStr);
@@ -80,7 +80,7 @@ export default function HomePage() {
     try {
       const matchesRes = await matchApi.getMatches(teamId);
       const all = matchesRes.data;
-      // 예정 = 아직 안 끝났고 오늘 이후인 경기. 날짜가 지났는데 결과를 안 넣은 경기는 지난 경기로 본다.
+      // 예정 = 아직 안 끝났고 킥오프 전인 경기. 킥오프가 지났는데 결과를 안 넣은 경기는 지난 경기로 본다.
       const now = new Date();
       const isUpcoming = (m: MatchListItem) => isUpcomingMatch(m, now);
       const scheduled = all
@@ -207,8 +207,10 @@ export default function HomePage() {
             ) : (
               <span className="text-[10px] font-black uppercase italic text-[#00F5FF]">
                 {(() => {
+                  // 킥오프가 지났으면 오늘 경기여도 결과 미입력으로 표시
+                  if (getMatchStatus(match) !== 'UPCOMING') return '결과 미입력';
                   const d = getDaysUntil(match.matchDate);
-                  return d === 0 ? 'D-Day' : d > 0 ? `D-${d}` : '결과 미입력';
+                  return d === 0 ? 'D-Day' : `D-${d}`;
                 })()}
               </span>
             )}
