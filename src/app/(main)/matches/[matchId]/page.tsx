@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { MapPin, CheckCircle2, XCircle, HelpCircle, ChevronDown, Trophy, PenLine } from 'lucide-react';
+import { CheckCircle2, XCircle, HelpCircle, ChevronDown, Trophy, PenLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
@@ -10,6 +10,7 @@ import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
 import MyStatInput from '@/components/match/MyStatInput';
 import MatchResultDialog from '@/components/match/MatchResultDialog';
+import MatchLocationMap from '@/components/match/MatchLocationMap';
 import { useMatchContext } from '@/components/match/MatchContext';
 import { cn, getNameInitials } from '@/lib/utils';
 import type { Match, VoteItem } from '@/types';
@@ -190,7 +191,12 @@ export default function MatchInfoPage() {
           {match.location && (
             <div className="flex items-start justify-between gap-4 py-4">
               <span className="text-sm font-bold text-zinc-500 flex-shrink-0">장소</span>
-              <p className="text-base font-black text-white text-right">{match.location}</p>
+              <div className="text-right">
+                <p className="text-base font-black text-white">{match.location}</p>
+                {match.locationAddress && (
+                  <p className="text-sm font-bold text-zinc-500 mt-1">{match.locationAddress}</p>
+                )}
+              </div>
             </div>
           )}
           {match.memo && (
@@ -240,12 +246,9 @@ export default function MatchInfoPage() {
         <MyStatInput matchId={matchId} playerId={playerId} />
       )}
 
-      {/* Map Preview placeholder */}
+      {/* 경기 장소 지도 */}
       <section className="rounded-3xl overflow-hidden border border-white/5 relative z-10 bg-white/[0.02]">
-        <div className="h-32 flex flex-col items-center justify-center gap-2">
-          <MapPin className="w-6 h-6 text-zinc-700" />
-          <p className="text-[9px] font-black text-zinc-700 uppercase tracking-widest">{match.location}</p>
-        </div>
+        <MatchLocationMap match={match} />
       </section>
 
       {/* Attendance Section */}

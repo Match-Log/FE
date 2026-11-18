@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ChevronLeft, MapPin, Calendar, Clock } from 'lucide-react';
+import { ChevronLeft, Calendar, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { matchApi } from '@/api/match';
 import { useTeamStore } from '@/stores/teamStore';
 import { cn } from '@/lib/utils';
+import LocationPicker from '@/components/match/LocationPicker';
 
 const createMatchSchema = z.object({
   matchType: z.enum(['SOCCER', 'FOOTBALL']),
@@ -17,7 +18,17 @@ const createMatchSchema = z.object({
   matchDate: z.string().min(1, '날짜를 선택해주세요'),
   matchTime: z.string().min(1, '시간을 선택해주세요'),
   homeAway: z.enum(['HOME', 'AWAY']),
-  location: z.string().min(2, '장소를 입력해주세요'),
+  // 카카오 장소 검색으로 고르면 주소·좌표까지, 직접 입력이면 location만 채워진다
+  place: z.object(
+    {
+      location: z.string().min(2, '장소를 입력해주세요'),
+      locationAddress: z.string().optional(),
+      latitude: z.number().optional(),
+      longitude: z.number().optional(),
+      kakaoPlaceId: z.string().optional(),
+    },
+    { error: '경기 장소를 선택해주세요' }
+  ),
   memo: z.string().max(500, '메모는 500자 이내로 입력해주세요').optional(),
 });
 
@@ -36,6 +47,8 @@ export default function CreateMatchPage() {
     },
   });
 
+  const placeError = errors.place?.message ?? errors.place?.location?.message;
+
   if (role !== 'MANAGER') {
     router.push('/schedule');
     return null;
@@ -51,7 +64,7 @@ export default function CreateMatchPage() {
         opponent: data.opponent,
         matchDate,
         homeAway: data.homeAway,
-        location: data.location,
+        ...data.place,
         memo: data.memo || undefined,
       });
       toast.success('경기가 생성되었습니다');
@@ -199,20 +212,14 @@ export default function CreateMatchPage() {
           <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] block">
             경기 장소
           </label>
-          <div className="relative">
-            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 pointer-events-none" />
-            <input
-              {...register('location')}
-              placeholder="경기장 이름 또는 주소"
-              className={cn(
-                'w-full bg-white/[0.03] border rounded-xl pl-11 pr-4 py-4 text-sm font-semibold placeholder-zinc-700 outline-none focus:border-[#00F5FF]/40 transition-colors',
-                errors.location ? 'border-red-500/50' : 'border-white/5'
-              )}
-            />
-          </div>
-          {errors.location && (
-            <p className="text-red-400 text-[10px] font-bold">{errors.location.message}</p>
-          )}
+          <Controller
+            name="place"
+            control={control}
+            render={({ field }) => (
+              <LocationPicker value={field.value} onChange={field.onChange} error={placeError} />
+            )}
+          />
+          {placeError && <p className="text-red-400 text-[10px] font-bold">{placeError}</p>}
         </section>
 
         {/* Memo */}

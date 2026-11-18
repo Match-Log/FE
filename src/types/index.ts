@@ -56,8 +56,16 @@ export interface Player {
   createdAt?: string;
 }
 
+// 경기 장소 좌표 정보. 카카오 장소 검색으로 고른 경우에만 채워진다(직접 입력·기존 경기는 없음).
+export interface MatchPlaceFields {
+  locationAddress?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  kakaoPlaceId?: string | null;
+}
+
 // Match - matches MatchResponseDto
-export interface Match {
+export interface Match extends MatchPlaceFields {
   matchId: number;
   teamId: number;
   opponent: string;
@@ -75,7 +83,7 @@ export interface Match {
 }
 
 // MatchListItem - matches MatchListItemResponseDto
-export interface MatchListItem {
+export interface MatchListItem extends MatchPlaceFields {
   matchId: number;
   opponent: string;
   matchDate: string;
