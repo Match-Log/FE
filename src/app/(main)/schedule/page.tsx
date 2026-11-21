@@ -113,7 +113,17 @@ export default function SchedulePage() {
     <div className="min-h-screen bg-[#05060B] text-white flex flex-col">
       {/* Header */}
       <header className="px-6 pt-8 pb-4 flex justify-between items-center sticky top-0 z-50 bg-[#05060B]/90 backdrop-blur-md border-b border-white/5">
-        <h1 className="text-xl font-black uppercase tracking-tight">경기 일정</h1>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label="뒤로 가기"
+            className="w-10 h-10 flex items-center justify-center bg-[#111218] border border-white/5 rounded-xl"
+          >
+            <ChevronLeft className="w-5 h-5 text-zinc-400" />
+          </button>
+          <h1 className="text-xl font-black uppercase tracking-tight">경기 일정</h1>
+        </div>
         {role === 'MANAGER' && (
           <Link
             href="/schedule/create"

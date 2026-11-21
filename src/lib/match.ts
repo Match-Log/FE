@@ -19,3 +19,27 @@ export function getMatchStatus(match: MatchLike, now: Date = new Date()): MatchS
 export function isUpcomingMatch(match: MatchLike, now: Date = new Date()) {
   return getMatchStatus(match, now) === 'UPCOMING';
 }
+
+/**
+ * MVP 투표 마감 시각. 경기 날짜(matchDate)가 n일이면 n+1일 23:59:59.999까지.
+ * finished 전환 시점이 아니라 경기 날짜 기준이므로 matchDate만 사용한다.
+ */
+export function getMvpVoteDeadline(matchDate: string): Date {
+  const d = new Date(matchDate);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 2); // n+2일 00:00
+  return new Date(d.getTime() - 1); // → n+1일 23:59:59.999
+}
+
+export type MvpPhase = 'VOTING' | 'REVIEW';
+
+/**
+ * 종료된 경기의 MVP 단계.
+ * - VOTING: 마감 전 → "MVP 투표하기"
+ * - REVIEW: 마감 후 → "경기 돌아보기"
+ * 미종료 경기는 null.
+ */
+export function getMvpPhase(match: MatchLike, now: Date = new Date()): MvpPhase | null {
+  if (!match.finished) return null;
+  return now.getTime() <= getMvpVoteDeadline(match.matchDate).getTime() ? 'VOTING' : 'REVIEW';
+}

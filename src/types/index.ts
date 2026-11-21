@@ -259,6 +259,21 @@ export interface MatchStatList {
   stats: PlayerStatItem[];
 }
 
+// MVP 투표 - matches MvpVote*ResponseDto
+export interface MvpVoteResult {
+  playerId: number;
+  name: string;
+  voteCount: number;
+}
+
+export interface MvpVoteResponse {
+  matchId: number;
+  totalVotes: number;
+  results: MvpVoteResult[]; // 득표 있는 선수만, 내림차순
+  winners: number[];        // 최다득표 playerId 목록(동점 허용), 없으면 []
+  myVote: number | null;    // 내가 투표한 playerId, 미투표 null
+}
+
 // BoardPost - matches DocumentListItemResponseDto
 export interface BoardPost {
   boardId: number;
