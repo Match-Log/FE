@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Pin, PenSquare } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Pin, PenSquare, ChevronLeft } from 'lucide-react';
 import { boardApi } from '@/api/board';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
@@ -23,7 +24,8 @@ function formatPostDate(dateStr: string) {
 
 
 export default function BoardPage() {
-  const { teamId, role } = useTeamStore();
+  const router = useRouter();
+  const { teamId } = useTeamStore();
   const [posts, setPosts] = useState<BoardPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,15 +44,23 @@ export default function BoardPage() {
     <div className="min-h-screen bg-[#05060B] text-white">
       {/* Header */}
       <header className="px-6 pt-8 pb-4 flex items-center justify-between sticky top-0 z-50 bg-[#05060B]/90 backdrop-blur-md border-b border-white/5">
-        <h1 className="text-lg font-black tracking-tight">팀 게시판</h1>
-        {role === 'MANAGER' && (
-          <Link
-            href="/board/create"
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-[#00F5FF]"
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label="뒤로 가기"
+            className="w-10 h-10 flex items-center justify-center bg-[#111218] border border-white/5 rounded-xl"
           >
-            <PenSquare className="w-4 h-4" />
-          </Link>
-        )}
+            <ChevronLeft className="w-5 h-5 text-zinc-400" />
+          </button>
+          <h1 className="text-lg font-black tracking-tight">팀 게시판</h1>
+        </div>
+        <Link
+          href="/board/create"
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-[#00F5FF]"
+        >
+          <PenSquare className="w-4 h-4" />
+        </Link>
       </header>
 
       <main className="relative pb-28">
@@ -63,14 +73,12 @@ export default function BoardPage() {
         ) : posts.length === 0 ? (
           <div className="text-center py-20 relative z-10">
             <p className="text-zinc-600 text-xs font-bold uppercase tracking-widest">게시글이 없습니다</p>
-            {role === 'MANAGER' && (
-              <Link
-                href="/board/create"
-                className="inline-block mt-6 px-6 py-3 accent-gradient text-black text-xs font-black uppercase tracking-widest rounded-xl"
-              >
-                + 게시글 작성
-              </Link>
-            )}
+            <Link
+              href="/board/create"
+              className="inline-block mt-6 px-6 py-3 accent-gradient text-black text-xs font-black uppercase tracking-widest rounded-xl"
+            >
+              + 게시글 작성
+            </Link>
           </div>
         ) : (
           <div className="space-y-px relative z-10">
