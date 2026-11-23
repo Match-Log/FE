@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { reissueToken } from './reissue';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
@@ -25,20 +26,9 @@ apiClient.interceptors.response.use(
     const orig = error.config;
     if (error.response?.status === 401 && !orig._retry) {
       orig._retry = true;
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (!refreshToken) {
-        window.location.href = '/login';
-        return Promise.reject(error);
-      }
       try {
-        const { data } = await axios.post(
-          `${API_BASE}/api/v1/auth/reissue`,
-          { refreshToken }
-        );
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
-        document.cookie = `accessToken=${data.accessToken}; path=/; max-age=1800; SameSite=Lax`;
-        orig.headers.Authorization = `Bearer ${data.accessToken}`;
+        const accessToken = await reissueToken();
+        orig.headers.Authorization = `Bearer ${accessToken}`;
         return apiClient(orig);
       } catch {
         localStorage.removeItem('accessToken');

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Bell, Settings, ChevronRight, Users, Megaphone, History, LayoutGrid } from 'lucide-react';
+import { ChevronLeft, Settings, ChevronRight, Users, Megaphone, History, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
 import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
@@ -11,6 +11,7 @@ import { participationApi } from '@/api/participation';
 import { boardApi } from '@/api/board';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
+import NotificationBell from '@/components/common/NotificationBell';
 import MvpVoteDialog from '@/components/match/MvpVoteDialog';
 import MatchReviewDialog from '@/components/match/MatchReviewDialog';
 import type { MatchListItem, VoteItem, RosterItem, BoardPost } from '@/types';
@@ -295,10 +296,7 @@ export default function HomePage() {
               {role === 'MANAGER' ? 'Manager' : 'Player'}
             </span>
           </div>
-          <button className="w-10 h-10 flex items-center justify-center relative bg-[#111218] border border-white/5 rounded-xl">
-            <Bell className="w-4 h-4 text-zinc-400" />
-            <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-purple-500 rounded-full border-2 border-[#05060B]" />
-          </button>
+          <NotificationBell />
           {role === 'MANAGER' && (
             <Link
               href="/team/settings"
