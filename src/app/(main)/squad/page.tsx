@@ -95,7 +95,14 @@ function SquadContent() {
     <div className="min-h-screen bg-[#05060B] text-white">
       {/* Header */}
       <header className="px-6 pt-10 pb-6 flex items-center justify-between sticky top-0 bg-[#05060B]/80 backdrop-blur-md z-40">
-        <div />
+        <button
+          type="button"
+          onClick={() => router.back()}
+          aria-label="뒤로 가기"
+          className="w-10 h-10 flex items-center justify-center bg-[#111218] border border-white/5 rounded-xl"
+        >
+          <ChevronLeft className="w-5 h-5 text-zinc-400" />
+        </button>
         <div className="text-center">
           <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.4em] mb-1">Squad List</p>
           <h1 className="text-2xl font-black italic tracking-tighter uppercase accent-gradient-text">

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Bell, Settings, ChevronRight, Users, Megaphone, History } from 'lucide-react';
+import { ChevronLeft, Bell, Settings, ChevronRight, Users, Megaphone, History, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
 import { matchApi } from '@/api/match';
 import { voteApi } from '@/api/vote';
@@ -11,9 +11,11 @@ import { participationApi } from '@/api/participation';
 import { boardApi } from '@/api/board';
 import { useTeamStore } from '@/stores/teamStore';
 import GridBackground from '@/components/common/GridBackground';
+import MvpVoteDialog from '@/components/match/MvpVoteDialog';
+import MatchReviewDialog from '@/components/match/MatchReviewDialog';
 import type { MatchListItem, VoteItem, RosterItem, BoardPost } from '@/types';
 import { cn, getNameInitials } from '@/lib/utils';
-import { getMatchStatus, isUpcomingMatch } from '@/lib/match';
+import { getMatchStatus, isUpcomingMatch, getMvpPhase, type MvpPhase } from '@/lib/match';
 
 function getDaysUntil(dateStr: string): number {
   const matchDate = new Date(dateStr);
@@ -70,6 +72,8 @@ export default function HomePage() {
   const [roster, setRoster] = useState<RosterItem[]>([]);
   const [notices, setNotices] = useState<BoardPost[]>([]);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
+  // 지난 경기 행에서 연 MVP 투표/경기 돌아보기 모달 대상
+  const [mvpTarget, setMvpTarget] = useState<{ matchId: number; phase: MvpPhase } | null>(null);
 
   const userName =
     typeof window !== 'undefined' ? localStorage.getItem('userName') || '선수' : '선수';
@@ -175,48 +179,72 @@ export default function HomePage() {
 
   const renderMatchRow = (match: MatchListItem) => {
     const result = getMatchResult(match);
+    // 종료된 경기만 MVP 단계가 잡힌다(VOTING: 투표 가능 / REVIEW: 마감 후 돌아보기).
+    const phase = getMvpPhase(match);
     return (
-      <Link key={match.matchId} href={`/matches/${match.matchId}`}>
-        <div className="flex items-center justify-between hover:opacity-80 transition-opacity">
-          <div>
-            <h4 className="text-base font-black uppercase tracking-tight">
-              vs {match.opponent}
-            </h4>
-            <p className="text-[10px] font-bold text-zinc-600 mt-1 uppercase tracking-widest italic">
-              {formatRecentDate(match.matchDate)}{' '}
-              {match.matchType === 'SOCCER' ? '축구' : '풋살'}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {result ? (
-              <>
-                <span
-                  className={cn(
-                    'text-xl font-black italic',
-                    result.label === '무' ? 'text-zinc-600' : 'text-white'
-                  )}
-                >
-                  {result.myScore} : {result.opponentScore}
-                </span>
-                <span className={cn('text-[10px] font-black uppercase italic', result.color)}>
-                  {result.label}
-                </span>
-              </>
-            ) : match.finished ? (
-              <span className="text-zinc-600 text-sm font-black">— : —</span>
-            ) : (
-              <span className="text-[10px] font-black uppercase italic text-[#00F5FF]">
-                {(() => {
-                  // 킥오프가 지났으면 오늘 경기여도 결과 미입력으로 표시
-                  if (getMatchStatus(match) !== 'UPCOMING') return '결과 미입력';
-                  const d = getDaysUntil(match.matchDate);
-                  return d === 0 ? 'D-Day' : `D-${d}`;
-                })()}
-              </span>
-            )}
-          </div>
+      <div key={match.matchId} className="flex items-center gap-3">
+        <Link
+          href={`/matches/${match.matchId}`}
+          className="min-w-0 shrink-0 hover:opacity-80 transition-opacity"
+        >
+          <h4 className="text-base font-black uppercase tracking-tight truncate">
+            vs {match.opponent}
+          </h4>
+          <p className="text-[10px] font-bold text-zinc-600 mt-1 uppercase tracking-widest italic">
+            {formatRecentDate(match.matchDate)}{' '}
+            {match.matchType === 'SOCCER' ? '축구' : '풋살'}
+          </p>
+        </Link>
+
+        {/* 가운데: MVP 투표하기 / 경기 돌아보기 (종료 경기에만) */}
+        <div className="flex-1 flex justify-center">
+          {phase && (
+            <button
+              onClick={() => setMvpTarget({ matchId: match.matchId, phase })}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.97]',
+                phase === 'VOTING'
+                  ? 'accent-gradient text-black'
+                  : 'bg-white/[0.04] border border-white/10 text-zinc-300'
+              )}
+            >
+              {phase === 'VOTING' ? 'MVP 투표하기' : '경기 돌아보기'}
+            </button>
+          )}
         </div>
-      </Link>
+
+        <Link
+          href={`/matches/${match.matchId}`}
+          className="shrink-0 flex items-center gap-3 hover:opacity-80 transition-opacity"
+        >
+          {result ? (
+            <>
+              <span
+                className={cn(
+                  'text-xl font-black italic',
+                  result.label === '무' ? 'text-zinc-600' : 'text-white'
+                )}
+              >
+                {result.myScore} : {result.opponentScore}
+              </span>
+              <span className={cn('text-[10px] font-black uppercase italic', result.color)}>
+                {result.label}
+              </span>
+            </>
+          ) : match.finished ? (
+            <span className="text-zinc-600 text-sm font-black">— : —</span>
+          ) : (
+            <span className="text-[10px] font-black uppercase italic text-[#00F5FF]">
+              {(() => {
+                // 킥오프가 지났으면 오늘 경기여도 결과 미입력으로 표시
+                if (getMatchStatus(match) !== 'UPCOMING') return '결과 미입력';
+                const d = getDaysUntil(match.matchDate);
+                return d === 0 ? 'D-Day' : `D-${d}`;
+              })()}
+            </span>
+          )}
+        </Link>
+      </div>
     );
   };
 
@@ -271,12 +299,14 @@ export default function HomePage() {
             <Bell className="w-4 h-4 text-zinc-400" />
             <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-purple-500 rounded-full border-2 border-[#05060B]" />
           </button>
-          <Link
-            href="/team/settings"
-            className="w-10 h-10 flex items-center justify-center bg-[#111218] border border-white/5 rounded-xl"
-          >
-            <Settings className="w-4 h-4 text-zinc-400" />
-          </Link>
+          {role === 'MANAGER' && (
+            <Link
+              href="/team/settings"
+              className="w-10 h-10 flex items-center justify-center bg-[#111218] border border-white/5 rounded-xl"
+            >
+              <Settings className="w-4 h-4 text-zinc-400" />
+            </Link>
+          )}
         </div>
       </header>
 
@@ -430,6 +460,24 @@ export default function HomePage() {
           )}
         </section>
 
+        {/* 팀 관리 허브 진입 */}
+        <Link
+          href="/team"
+          className="flex items-center gap-4 p-6 border border-white/5 rounded-[2rem] hover:border-[#00F5FF]/20 transition-all active:scale-[0.99]"
+          style={{ background: 'rgba(18, 20, 32, 0.4)', backdropFilter: 'blur(20px)' }}
+        >
+          <div className="w-11 h-11 rounded-2xl bg-[#00F5FF]/10 border border-[#00F5FF]/20 flex items-center justify-center flex-shrink-0">
+            <LayoutGrid className="w-5 h-5 text-[#00F5FF]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-black tracking-tight">팀 관리</h3>
+            <p className="text-[10px] font-bold text-zinc-600 mt-0.5 uppercase tracking-widest">
+              일정 · 선수단 · 게시판 · 설정
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-zinc-600 flex-shrink-0" />
+        </Link>
+
         {/* Match List Card */}
         <section
           className="p-8 border border-white/5 rounded-[2rem]"
@@ -563,6 +611,18 @@ export default function HomePage() {
             )}
           </div>
         </div>
+
+        <MvpVoteDialog
+          open={mvpTarget?.phase === 'VOTING'}
+          onOpenChange={(o) => !o && setMvpTarget(null)}
+          matchId={mvpTarget?.matchId ?? 0}
+          playerId={playerId}
+        />
+        <MatchReviewDialog
+          open={mvpTarget?.phase === 'REVIEW'}
+          onOpenChange={(o) => !o && setMvpTarget(null)}
+          matchId={mvpTarget?.matchId ?? 0}
+        />
       </main>
     </div>
   );
